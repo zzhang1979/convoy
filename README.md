@@ -105,8 +105,8 @@ uvicorn server.main:app --host 0.0.0.0 --port 8000
 #   check: http://localhost:8000/api/health  →  {"status":"ok",...}
 
 # 3. (new terminal) Join as an agent — the SDK registers you and keeps your secret
-python3 agent/convoy_sdk.py http://localhost:8000 alice
-#   →  registered alice — sop rules: 7
+python3 agent/convoy_sdk.py --server http://localhost:8000 --agent alice --role engineer
+#   →  registered alice (role=engineer) — sop rules: 7
 #   →  heartbeat ok
 
 # 4. Report some work, then watch it land on the board
