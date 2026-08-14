@@ -21,7 +21,8 @@ from .derive import derive_board, derive_tasks
 
 EventType = Literal[
     "created", "started", "blocked_on", "unblocked", "artifact_published",
-    "progress", "heartbeat", "done", "cancelled",
+    "progress", "heartbeat", "done", "cancelled", "handoff_requested",
+    "handoff_accepted",
 ]
 
 
@@ -35,6 +36,8 @@ class RegisterRequest(BaseModel):
 class RegisterResponse(BaseModel):
     agent_id: str
     secret: str
+    sop: list[dict[str, Any]] = []
+    wip_handoffs: list[dict[str, Any]] = []
 
 
 class EventRequest(BaseModel):
@@ -49,6 +52,7 @@ class EventRequest(BaseModel):
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     models.init_db()
+    models.seed_sop()
     yield
 
 
@@ -103,7 +107,19 @@ def register(req: RegisterRequest, response: Response) -> RegisterResponse:
         req.agent_id, req.name, req.capabilities, req.endpoint
     )
     response.status_code = status.HTTP_201_CREATED if created else status.HTTP_200_OK
-    return RegisterResponse(agent_id=req.agent_id, secret=secret)
+    # Onboarding payload: SOP + any WIP assigned to this agent
+    sop = models.sop_list()
+    handoffs = models.handoff_list(agent_id=req.agent_id)
+    wip = [
+        h for h in handoffs
+        if h["status"] == "requested" and h["to_agent"] == req.agent_id
+    ]
+    return RegisterResponse(
+        agent_id=req.agent_id,
+        secret=secret,
+        sop=sop,
+        wip_handoffs=wip,
+    )
 
 
 @app.post("/api/events", status_code=status.HTTP_202_ACCEPTED)
@@ -187,3 +203,102 @@ def agents_list(authorization: str | None = Header(None)) -> dict[str, Any]:
             ).fetchall()
         ]
     return {"agents": agents}
+
+
+# --- KV store (S2.1) -------------------------------------------------------
+
+class KvSetRequest(BaseModel):
+    key: str = Field(min_length=1, max_length=128)
+    value: Any
+
+
+@app.put("/api/kv/{namespace}/{key}")
+def kv_put(namespace: str, key: str, body: KvSetRequest,
+           authorization: str | None = Header(None)) -> dict[str, Any]:
+    """Upsert a KV pair. Agent-scoped: namespace must be task:<id> or agent:<self>."""
+    agent_id = _authorize(authorization)
+    value = body.value
+    # Scope check: agents may only write their own namespace or a task namespace
+    if not (namespace.startswith("task:") or namespace == f"agent:{agent_id}"):
+        raise HTTPException(status.HTTP_403_FORBIDDEN,
+                            "namespace must be task:<id> or agent:<your_id>")
+    models.kv_set(namespace, key, value, agent_id)
+    return {"namespace": namespace, "key": key, "status": "set"}
+
+
+@app.get("/api/kv/{namespace}/{key}")
+def kv_get(namespace: str, key: str, authorization: str | None = Header(None)) -> dict[str, Any]:
+    """Read a KV pair."""
+    _authorize(authorization)
+    pair = models.kv_get(namespace, key)
+    if pair is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "key not found")
+    return pair
+
+
+@app.get("/api/kv/{namespace}")
+def kv_list(namespace: str, prefix: str = "", authorization: str | None = Header(None)) -> dict[str, Any]:
+    """List KV pairs in a namespace, optionally filtered by key prefix."""
+    _authorize(authorization)
+    pairs = models.kv_list(namespace, prefix)
+    return {"namespace": namespace, "prefix": prefix, "items": pairs}
+
+
+@app.delete("/api/kv/{namespace}/{key}")
+def kv_delete(namespace: str, key: str, authorization: str | None = Header(None)) -> dict[str, Any]:
+    """Delete a KV pair."""
+    agent_id = _authorize(authorization)
+    if not (namespace.startswith("task:") or namespace == f"agent:{agent_id}"):
+        raise HTTPException(status.HTTP_403_FORBIDDEN,
+                            "namespace must be task:<id> or agent:<your_id>")
+    deleted = models.kv_delete(namespace, key)
+    return {"namespace": namespace, "key": key, "deleted": deleted}
+
+
+# --- SOP (S2.3) ------------------------------------------------------------
+
+@app.get("/api/sop")
+def sop_get(authorization: str | None = Header(None)) -> dict[str, Any]:
+    """Return the collaboration SOP (agent auth)."""
+    _authorize(authorization)
+    return {"sop": models.sop_list()}
+
+
+# --- Handoffs (S2.2) -------------------------------------------------------
+
+class HandoffRequest(BaseModel):
+    to_agent: str
+    notes: str = ""
+
+
+@app.post("/api/tasks/{task_id}/handoff")
+def handoff_create(task_id: str, req: HandoffRequest,
+                   authorization: str | None = Header(None)) -> dict[str, Any]:
+    """Request a handoff of a WIP task to another agent."""
+    from_agent = _authorize(authorization)
+    # Record handoff + an event so the timeline shows it
+    h_id = models.handoff_request(task_id, from_agent, req.to_agent, req.notes)
+    models.append_event(
+        from_agent, f"handoff-{h_id}", task_id, "handoff_requested",
+        {"to_agent": req.to_agent, "notes": req.notes},
+    )
+    return {"handoff_id": h_id, "task_id": task_id, "status": "requested"}
+
+
+@app.post("/api/handoffs/{handoff_id}/accept")
+def handoff_accept(handoff_id: int, authorization: str | None = Header(None)) -> dict[str, Any]:
+    """Accept a handoff (only the to_agent)."""
+    agent_id = _authorize(authorization)
+    ok = models.handoff_accept(handoff_id, agent_id)
+    if not ok:
+        raise HTTPException(status.HTTP_403_FORBIDDEN,
+                            "not the target agent or handoff not pending")
+    return {"handoff_id": handoff_id, "status": "accepted"}
+
+
+@app.get("/api/handoffs")
+def handoffs_list(task_id: str = "", authorization: str | None = Header(None)) -> dict[str, Any]:
+    """List handoffs, optionally filtered by task."""
+    agent_id = _authorize(authorization)
+    items = models.handoff_list(task_id or None, agent_id)
+    return {"handoffs": items}
