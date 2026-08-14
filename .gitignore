@@ -1,0 +1,11 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+
+# Runtime data (SQLite lives next to the server by default)
+server/convoy.db
+*.db
+*.db-wal
+*.db-shm
