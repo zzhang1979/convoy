@@ -84,12 +84,29 @@ into the costing model, ship remaining UI/Docker stories.
 **Note**: Simple path (self-report) done. Complex path (cross-platform auto-sync
 via provider APIs) deferred to discussion — that's the "pair for later" item.
 
-## Sprint 5 — (draft)
+## Sprint 5 — Team-Ready: UI Serving, Docker, Onboarding ✅ DONE
 
-- S4.4 Cost + usage in UI (Jasmine)
-- S4.6 Docker deployment (Michelle)
-- S5.1 Hermes kanban bridge (Hermes tasks → Convoy events)
-- S5.2 Multi-host agents (Hermes/OpenClaw integration proof)
+**Goal**: Make Convoy usable by the whole team (Jean/Jasmine/Michelle) and
+loggable by the commander — UI served, Docker deployable, onboarding docs.
+
+| # | Story | Owner | Status | Notes |
+|---|-------|-------|--------|-------|
+| S5.1 | **UI static serving** — `/` and `/ui/` serve Jasmine's pulse screen | Jean | ✅ done | Commander logs in with token |
+| S5.2 | **UI costs section** — per-agent hours/tokens/cost on pulse | Jean | ✅ done | refreshCosts() pulls /api/costs/full |
+| S5.3 | **Docker deployment** — Dockerfile + compose, healthcheck | Jean | ✅ done | Smoke-tested on .108 |
+| S5.4 | **Team quickstart** — docs/team-quickstart.md for all 3 agents | Jean | ✅ done | |
+| S5.5 | **SDK role support** — ConvoyAgent(role=...) auto-schedules | Jean | ✅ done | Full team loop verified |
+| S5.6 | **Old-DB migration** — ALTER roles + usage table on startup | Jean | ✅ done | No data loss on upgrade |
+
+**Verified end-to-end**: Jasmine creates task → KV + usage → handoff to Michelle
+→ Michelle sees WIP at registration → accepts → progresses. Commander views
+board + costs/full from UI at http://192.168.0.154:8000/.
+
+## Sprint 6 — (draft)
+
+- S6.1 Hermes kanban bridge (Hermes tasks → Convoy events)
+- S6.2 Multi-host agents (Hermes/OpenClaw integration proof)
+- S6.3 README quickstart (Jasmine)
 
 ## Definition of Ready (story is ready when)
 
