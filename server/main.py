@@ -312,6 +312,13 @@ def handoffs_list(task_id: str = "", authorization: str | None = Header(None)) -
 
 class RoleSetRequest(BaseModel):
     cost_per_hour: float = Field(ge=0)
+    in_cost_per_1m: Optional[float] = Field(default=None, ge=0)
+    out_cost_per_1m: Optional[float] = Field(default=None, ge=0)
+
+
+class TokenCostRequest(BaseModel):
+    in_cost_per_1m: float = Field(default=3.0, ge=0)
+    out_cost_per_1m: float = Field(default=15.0, ge=0)
 
 
 @app.put("/api/roles/{role_name}")
@@ -367,3 +374,48 @@ def costs_get(authorization: str | None = Header(None)) -> dict[str, Any]:
     """Cost report: per-agent active hours × role rate, plus role totals."""
     _commander(authorization)
     return models.compute_costs()
+
+
+# --- Token usage (S4.1-S4.3) -------------------------------------------------
+
+class UsageReportRequest(BaseModel):
+    task_id: Optional[str] = None
+    model: str = "unknown"
+    tokens_in: int = Field(ge=0)
+    tokens_out: int = Field(ge=0)
+
+
+@app.post("/api/usage")
+def usage_report(req: UsageReportRequest,
+                 authorization: str | None = Header(None)) -> dict[str, Any]:
+    """Self-report LLM token usage (agent auth)."""
+    agent_id = _authorize(authorization)
+    models.usage_report(agent_id, req.task_id, req.model, req.tokens_in, req.tokens_out)
+    return {"status": "recorded", "agent_id": agent_id}
+
+
+@app.get("/api/usage")
+def usage_get(agent_id: str = "", task_id: str = "", model: str = "", since: str = "",
+              authorization: str | None = Header(None)) -> dict[str, Any]:
+    """Usage report with optional filters (commander)."""
+    _commander(authorization)
+    return models.usage_summary(
+        agent_id or None, task_id or None, model or None, since or None
+    )
+
+
+@app.get("/api/costs/full")
+def costs_full(authorization: str | None = Header(None)) -> dict[str, Any]:
+    """Full cost report: time cost + token cost merged."""
+    _commander(authorization)
+    return models.usage_merge_costs()
+
+
+@app.put("/api/roles/{role_name}/token-costs")
+def role_token_costs_put(role_name: str, req: TokenCostRequest,
+                         authorization: str | None = Header(None)) -> dict[str, Any]:
+    """Set a role's token pricing (commander). Body: {in_cost_per_1m, out_cost_per_1m}."""
+    _commander(authorization)
+    models.role_set_token_costs(role_name, req.in_cost_per_1m, req.out_cost_per_1m)
+    return {"role_name": role_name, "in_cost_per_1m": req.in_cost_per_1m,
+            "out_cost_per_1m": req.out_cost_per_1m}

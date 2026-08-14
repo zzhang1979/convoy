@@ -125,6 +125,19 @@ for r in json.load(sys.stdin)['sop']:
 "
 }
 
+cmd_usage() {
+  # usage <tokens_in> <tokens_out> [model] [task_id]
+  local tin="$2" tout="$3" model="${4:-unknown}" task="${5:-}"
+  local body="{\"tokens_in\":$tin,\"tokens_out\":$tout,\"model\":\"$model\""
+  [ -n "$task" ] && body="$body,\"task_id\":\"$task\""
+  body="$body}"
+  curl -sf -X POST "$SERVER/api/usage" \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer $(secret)" \
+    -d "$body"
+  echo
+}
+
 case "${1:-}" in
   join)      cmd_join "$@" ;;
   heartbeat) cmd_heartbeat ;;
@@ -134,5 +147,6 @@ case "${1:-}" in
   kv)        cmd_kv "$@" ;;
   handoff)   cmd_handoff "$@" ;;
   sop)       cmd_sop ;;
-  *) echo "Usage: $0 {join|heartbeat|report|done|blocked|kv|handoff|sop} ..." >&2; exit 1 ;;
+  usage)     cmd_usage "$@" ;;
+  *) echo "Usage: $0 {join|heartbeat|report|done|blocked|kv|handoff|sop|usage} ..." >&2; exit 1 ;;
 esac

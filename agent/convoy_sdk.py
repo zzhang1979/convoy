@@ -141,6 +141,18 @@ class ConvoyAgent:
         self.sop = r.json().get("sop", [])
         return self.sop
 
+    # --- token usage (S4.1) ------------------------------------------------
+
+    def report_usage(self, tokens_in: int, tokens_out: int, model: str = "unknown",
+                     task_id: Optional[str] = None) -> dict:
+        """Self-report LLM token usage after a call (one line per call)."""
+        r = requests.post(f"{self.server}/api/usage",
+                          json={"tokens_in": tokens_in, "tokens_out": tokens_out,
+                                "model": model, "task_id": task_id},
+                          headers=self._auth(), timeout=15)
+        r.raise_for_status()
+        return r.json()
+
 
 if __name__ == "__main__":
     import sys

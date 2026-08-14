@@ -76,6 +76,8 @@ CREATE INDEX IF NOT EXISTS idx_handoffs_task ON handoffs(task_id);
 CREATE TABLE IF NOT EXISTS roles (
     role_name       TEXT PRIMARY KEY,
     cost_per_hour   REAL NOT NULL DEFAULT 0,
+    in_cost_per_1m  REAL NOT NULL DEFAULT 3.0,   -- USD per 1M input tokens (GPT-4o-ish default)
+    out_cost_per_1m REAL NOT NULL DEFAULT 15.0,  -- USD per 1M output tokens
     updated_at      TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -89,6 +91,18 @@ CREATE TABLE IF NOT EXISTS schedules (
     cost_override       REAL,              -- per-agent rate override (NULL = use role)
     updated_at          TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+CREATE TABLE IF NOT EXISTS usage (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    agent_id    TEXT NOT NULL,
+    task_id     TEXT,
+    model       TEXT NOT NULL DEFAULT 'unknown',
+    tokens_in   INTEGER NOT NULL DEFAULT 0,
+    tokens_out  INTEGER NOT NULL DEFAULT 0,
+    reported_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_usage_agent ON usage(agent_id);
+CREATE INDEX IF NOT EXISTS idx_usage_task  ON usage(task_id);
 """
 
 
@@ -428,6 +442,13 @@ def seed_roles() -> None:
                 """,
                 role,
             )
+        # ensure token-cost columns exist on pre-existing rows
+        conn.execute(
+            "UPDATE roles SET in_cost_per_1m = 3.0 WHERE in_cost_per_1m IS NULL"
+        )
+        conn.execute(
+            "UPDATE roles SET out_cost_per_1m = 15.0 WHERE out_cost_per_1m IS NULL"
+        )
         conn.commit()
     finally:
         conn.close()
@@ -452,12 +473,49 @@ def role_set(role_name: str, cost_per_hour: float) -> None:
         conn.close()
 
 
+def role_set_token_costs(role_name: str, in_cost_per_1m: float, out_cost_per_1m: float) -> None:
+    """Set a role's token pricing."""
+    conn = connect()
+    try:
+        conn.execute(
+            """
+            INSERT INTO roles (role_name, in_cost_per_1m, out_cost_per_1m, updated_at)
+            VALUES (?, ?, ?, datetime('now'))
+            ON CONFLICT(role_name) DO UPDATE SET
+                in_cost_per_1m = excluded.in_cost_per_1m,
+                out_cost_per_1m = excluded.out_cost_per_1m,
+                updated_at = datetime('now')
+            """,
+            (role_name, in_cost_per_1m, out_cost_per_1m),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
 def roles_list() -> list[dict]:
     conn = connect()
     try:
         return [dict(r) for r in conn.execute(
-            "SELECT role_name, cost_per_hour, updated_at FROM roles ORDER BY role_name"
+            "SELECT role_name, cost_per_hour, in_cost_per_1m, out_cost_per_1m, updated_at FROM roles ORDER BY role_name"
         ).fetchall()]
+    finally:
+        conn.close()
+
+
+def role_token_costs(role_name: str | None) -> tuple[float, float]:
+    """Return (in_cost_per_1m, out_cost_per_1m) for a role."""
+    if not role_name:
+        return 3.0, 15.0
+    conn = connect()
+    try:
+        row = conn.execute(
+            "SELECT in_cost_per_1m, out_cost_per_1m FROM roles WHERE role_name = ?",
+            (role_name,),
+        ).fetchone()
+        if not row:
+            return 3.0, 15.0
+        return row["in_cost_per_1m"], row["out_cost_per_1m"]
     finally:
         conn.close()
 
@@ -629,3 +687,119 @@ def compute_costs() -> dict:
                      for k, v in role_totals.items()],
         "total": {"hours": round(grand_hours, 2), "cost": round(grand_cost, 2)},
     }
+
+
+# ---------- Token usage (S4.1) ----------
+
+def usage_report(agent_id: str, task_id: str | None, model: str,
+                 tokens_in: int, tokens_out: int) -> None:
+    """Record an agent's LLM token usage (self-report)."""
+    conn = connect()
+    try:
+        conn.execute(
+            """
+            INSERT INTO usage (agent_id, task_id, model, tokens_in, tokens_out)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (agent_id, task_id, model, int(tokens_in), int(tokens_out)),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def usage_summary(agent_id: str | None = None, task_id: str | None = None,
+                  model: str | None = None, since: str | None = None) -> dict:
+    """Aggregate usage per agent (+ optional filters), with token cost.
+
+    Token cost uses each agent's role pricing (in/out per 1M).
+    """
+    conn = connect()
+    try:
+        where: list[str] = []
+        params: list = []
+        if agent_id:
+            where.append("u.agent_id = ?")
+            params.append(agent_id)
+        if task_id:
+            where.append("u.task_id = ?")
+            params.append(task_id)
+        if model:
+            where.append("u.model = ?")
+            params.append(model)
+        if since:
+            where.append("u.reported_at >= ?")
+            params.append(since)
+        wsql = (" WHERE " + " AND ".join(where)) if where else ""
+
+        rows = conn.execute(
+            f"""
+            SELECT u.agent_id, u.model,
+                   SUM(u.tokens_in) AS tokens_in, SUM(u.tokens_out) AS tokens_out,
+                   COUNT(*) AS calls
+            FROM usage u
+            {wsql}
+            GROUP BY u.agent_id, u.model
+            ORDER BY u.agent_id
+            """,
+            params,
+        ).fetchall()
+        agents = {a["agent_id"]: a.get("name") for a in
+                  conn.execute("SELECT agent_id, name FROM agents").fetchall()}
+        schedules = {s["agent_id"]: s for s in schedule_all()}
+    finally:
+        conn.close()
+
+    per_agent: dict[str, dict] = {}
+    grand_in = grand_out = grand_calls = 0
+    grand_cost = 0.0
+    for r in rows:
+        d = dict(r)
+        sched = schedules.get(d["agent_id"], {})
+        role = sched.get("role_name") or "unassigned"
+        in_cost, out_cost = role_token_costs(role)
+        token_cost = (d["tokens_in"] / 1e6 * in_cost) + (d["tokens_out"] / 1e6 * out_cost)
+        d["role"] = role
+        d["token_cost"] = round(token_cost, 4)
+        per_agent.setdefault(d["agent_id"], {
+            "agent_id": d["agent_id"], "name": agents.get(d["agent_id"]),
+            "role": role, "tokens_in": 0, "tokens_out": 0, "calls": 0, "token_cost": 0.0,
+            "by_model": [],
+        })
+        agg = per_agent[d["agent_id"]]
+        agg["tokens_in"] += d["tokens_in"]
+        agg["tokens_out"] += d["tokens_out"]
+        agg["calls"] += d["calls"]
+        agg["token_cost"] += token_cost
+        agg["by_model"].append({k: d[k] for k in ("model", "tokens_in", "tokens_out", "calls", "token_cost")})
+        grand_in += d["tokens_in"]
+        grand_out += d["tokens_out"]
+        grand_calls += d["calls"]
+        grand_cost += token_cost
+
+    return {
+        "per_agent": list(per_agent.values()),
+        "total": {
+            "tokens_in": grand_in, "tokens_out": grand_out,
+            "calls": grand_calls, "token_cost": round(grand_cost, 4),
+        },
+    }
+
+
+def usage_merge_costs() -> dict:
+    """Full cost report: time cost + token cost per agent."""
+    base = compute_costs()
+    usage = usage_summary()
+    u_by_agent = {a["agent_id"]: a for a in usage["per_agent"]}
+    for a in base["per_agent"]:
+        u = u_by_agent.get(a["agent_id"])
+        a["tokens_in"] = u["tokens_in"] if u else 0
+        a["tokens_out"] = u["tokens_out"] if u else 0
+        a["token_cost"] = round(u["token_cost"], 2) if u else 0.0
+        a["total_cost"] = round(a["cost"] + a["token_cost"], 2)
+    grand_time = base["total"]["cost"]
+    grand_tokens = usage["total"]["token_cost"]
+    base["total"]["token_cost"] = round(grand_tokens, 2)
+    base["total"]["grand_total"] = round(grand_time + grand_tokens, 2)
+    base["usage"] = usage["total"]
+    return base
