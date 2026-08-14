@@ -64,7 +64,7 @@ h1 .dot { color:var(--gold); }
 </head>
 <body>
 <h1>Convoy <span class="dot">◈</span> Commander Pulse</h1>
-<div class="sub">Agent team orchestration — derived truth from the event log · <span id="ts"></span></div>
+<div class="sub">Agent team orchestration — derived truth from the event log · <span id="ts"></span> · token: <span id="tok" style="color:var(--gold)">•••</span></div>
 
 <div class="bands">
   <div class="band">
@@ -99,6 +99,7 @@ h1 .dot { color:var(--gold); }
 <script>
 const TOKEN = localStorage.getItem('convoy-token') || prompt('Commander token:') || '';
 localStorage.setItem('convoy-token', TOKEN);
+document.getElementById('tok').textContent = TOKEN.slice(0, 8) + '…';
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt = n => Number(n || 0).toFixed(2);
@@ -139,6 +140,11 @@ function costRow(a) {
 async function refresh() {
   try {
     const r = await fetch('/api/board', {headers: {Authorization: 'Bearer ' + TOKEN}});
+    if (r.status === 401 || r.status === 403) {
+      localStorage.removeItem('convoy-token');
+      location.reload();  // re-prompt for token
+      return;
+    }
     const d = await r.json();
     const b = d.board;
     document.getElementById('running').innerHTML = b.running.length ? b.running.map(t=>taskRow(t,'running')).join('') : '<div class="empty">Nothing running</div>';
