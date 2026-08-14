@@ -23,13 +23,14 @@ class ConvoyAgent:
 
     def __init__(self, server: str, agent_id: str, secret: Optional[str] = None,
                  name: Optional[str] = None, capabilities: Optional[list[str]] = None,
-                 endpoint: Optional[str] = None):
+                 endpoint: Optional[str] = None, role: Optional[str] = None):
         self.server = server.rstrip("/")
         self.agent_id = agent_id
         self.secret = secret
         self.name = name or agent_id
         self.capabilities = capabilities or ["shell", "web"]
         self.endpoint = endpoint
+        self.role = role
         self.sop: list[dict] = []
         self.wip_handoffs: list[dict] = []
         if not self.secret:
@@ -39,10 +40,13 @@ class ConvoyAgent:
 
     def register(self) -> dict:
         """Join Convoy; stores secret + onboarding SOP/WIP."""
-        r = requests.post(f"{self.server}/api/register", json={
+        body: dict[str, Any] = {
             "agent_id": self.agent_id, "name": self.name,
             "capabilities": self.capabilities, "endpoint": self.endpoint,
-        }, timeout=15)
+        }
+        if self.role:
+            body["role"] = self.role
+        r = requests.post(f"{self.server}/api/register", json=body, timeout=15)
         r.raise_for_status()
         d = r.json()
         self.secret = d["secret"]
