@@ -5,6 +5,8 @@ Run:  uvicorn server.main:app --host 0.0.0.0 --port 8000
 
 from __future__ import annotations
 
+import json
+import os
 from contextlib import asynccontextmanager
 from typing import Any, Literal, Optional
 
@@ -13,6 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from . import models
+from .derive import derive_board, derive_tasks
 
 # --- request/response models -----------------------------------------------
 
@@ -121,3 +124,66 @@ def append_event(req: EventRequest,
         "event_id": req.event_id,
         "status": "accepted" if inserted else "duplicate",
     }
+
+
+# --- commander views (derived from the event log) --------------------------
+
+def _commander(authorization: str | None) -> None:
+    """Validate commander token for read endpoints."""
+    expected = os.environ.get("CONVOY_COMMANDER_TOKEN", "commander-secret")
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "missing bearer token")
+    if authorization.removeprefix("Bearer ").strip() != expected:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "commander token required")
+
+
+def _load_events() -> list[dict[str, Any]]:
+    """Read all events (payloads parsed) for projection."""
+    events: list[dict[str, Any]] = []
+    with models.connect() as conn:
+        rows = conn.execute("SELECT * FROM events ORDER BY id").fetchall()
+    for r in rows:
+        d = dict(r)
+        try:
+            d["payload"] = json.loads(d["payload"])
+        except (json.JSONDecodeError, TypeError):
+            d["payload"] = {}
+        events.append(d)
+    return events
+
+
+@app.get("/api/board")
+def board(authorization: str | None = Header(None)) -> dict[str, Any]:
+    """Commander pulse: running / stuck / done-today / todo (derived)."""
+    _commander(authorization)
+    events = _load_events()
+    b = derive_board(events)
+    with models.connect() as conn:
+        agents = [
+            dict(r) for r in conn.execute(
+                "SELECT agent_id, name, capabilities, last_heartbeat FROM agents"
+            ).fetchall()
+        ]
+    return {"board": b, "agents": agents}
+
+
+@app.get("/api/tasks/{task_id}")
+def task_detail(task_id: str, authorization: str | None = Header(None)) -> dict[str, Any]:
+    """Task timeline + derived projection."""
+    _commander(authorization)
+    events = [e for e in _load_events() if e.get("task_id") == task_id]
+    proj = derive_tasks(events).get(task_id)
+    return {"task_id": task_id, "events": events, "projection": proj.to_dict() if proj else None}
+
+
+@app.get("/api/agents")
+def agents_list(authorization: str | None = Header(None)) -> dict[str, Any]:
+    """Agent registry with heartbeat status."""
+    _commander(authorization)
+    with models.connect() as conn:
+        agents = [
+            dict(r) for r in conn.execute(
+                "SELECT agent_id, name, capabilities, endpoint, joined_at, last_heartbeat FROM agents"
+            ).fetchall()
+        ]
+    return {"agents": agents}
