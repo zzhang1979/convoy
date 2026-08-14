@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Convoy — Commander Pulse</title>
+<style>
+:root {
+  --bg: #0a0e14; --card: rgba(17,24,39,0.72); --gold: #D4A84B;
+  --text: #f1f5f9; --text2: #94a3b8; --border: rgba(148,163,184,0.12);
+  --green: #34d399; --red: #f87171; --amber: #fbbf24; --blue: #38bdf8;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:var(--bg); color:var(--text); font-family:Inter,system-ui,sans-serif; padding:24px; }
+h1 { font-size:22px; font-weight:700; letter-spacing:-0.5px; margin-bottom:4px; }
+h1 .dot { color:var(--gold); }
+.sub { color:var(--text2); font-size:13px; margin-bottom:20px; }
+.bands { display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; }
+@media (max-width:800px){ .bands{grid-template-columns:1fr;} }
+.band { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; }
+.band h2 { font-size:13px; text-transform:uppercase; letter-spacing:1.5px; color:var(--text2); margin-bottom:12px; display:flex; justify-content:space-between; }
+.band h2 .count { background:rgba(212,168,75,0.15); color:var(--gold); border-radius:20px; padding:1px 8px; font-size:11px; }
+.task { display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--border); font-size:13px; }
+.task:last-child { border-bottom:none; }
+.task .dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.task .meta { color:var(--text2); font-size:11px; margin-top:2px; }
+.task .reason { color:var(--amber); font-size:11px; margin-top:2px; }
+.empty { color:var(--text2); font-size:12px; text-align:center; padding:20px 0; }
+.stuck { border-left:3px solid var(--red); }
+.running { border-left:3px solid var(--blue); }
+.review { border-left:3px solid var(--amber); }
+.done { border-left:3px solid var(--green); }
+.agents { margin-top:20px; display:flex; gap:10px; flex-wrap:wrap; }
+.agent { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:6px 12px; font-size:12px; display:flex; align-items:center; gap:6px; }
+.agent .dot { width:6px; height:6px; border-radius:50%; }
+.agent .green { background:var(--green); } .agent .red { background:var(--red); }
+</style>
+</head>
+<body>
+<h1>Convoy <span class="dot">◈</span> Commander Pulse</h1>
+<div class="sub">Agent team orchestration — derived truth from the event log · <span id="ts"></span></div>
+
+<div class="bands">
+  <div class="band">
+    <h2>Running <span class="count" id="c-running">0</span></h2>
+    <div id="running"></div>
+  </div>
+  <div class="band stuck">
+    <h2>Stuck <span class="count" id="c-stuck">0</span></h2>
+    <div id="stuck"></div>
+  </div>
+  <div class="band">
+    <h2>Done Today <span class="count" id="c-done">0</span></h2>
+    <div id="done"></div>
+  </div>
+</div>
+
+<div class="agents" id="agents"></div>
+
+<script>
+const TOKEN = localStorage.getItem('convoy-token') || prompt('Commander token:') || '';
+localStorage.setItem('convoy-token', TOKEN);
+
+function taskRow(t, cls) {
+  return `<div class="task ${cls}">
+    <span class="dot" style="background:${t.status==='stuck'?'var(--red)':t.status==='review'?'var(--amber)':t.status==='doing'?'var(--blue)':'var(--green)'}"></span>
+    <div style="flex:1">
+      <div>${t.title || t.task_id}</div>
+      <div class="meta">${t.assignee || 'unassigned'} · ${t.task_id}</div>
+      ${t.block_reason ? `<div class="reason">⛔ ${t.block_reason}</div>` : ''}
+    </div>
+  </div>`;
+}
+
+async function refresh() {
+  try {
+    const r = await fetch('/api/board', {headers: {Authorization: 'Bearer ' + TOKEN}});
+    const d = await r.json();
+    const b = d.board;
+    document.getElementById('running').innerHTML = b.running.length ? b.running.map(t=>taskRow(t,'running')).join('') : '<div class="empty">Nothing running</div>';
+    document.getElementById('stuck').innerHTML = b.stuck.length ? b.stuck.map(t=>taskRow(t,'stuck')).join('') : '<div class="empty">No blockers 🎉</div>';
+    document.getElementById('done').innerHTML = b.done_today.length ? b.done_today.map(t=>taskRow(t,'done')).join('') : '<div class="empty">Nothing done today</div>';
+    document.getElementById('c-running').textContent = b.running.length;
+    document.getElementById('c-stuck').textContent = b.stuck.length;
+    document.getElementById('c-done').textContent = b.done_today.length;
+    document.getElementById('agents').innerHTML = (d.agents||[]).map(a =>
+      `<div class="agent"><span class="dot ${a.last_heartbeat ? 'green' : 'red'}"></span>${a.name || a.agent_id}</div>`).join('');
+  } catch(e) { console.error(e); }
+}
+refresh();
+setInterval(refresh, 5000);
+document.getElementById('ts').textContent = new Date().toLocaleTimeString();
+</script>
+</body>
+</html>
