@@ -57,6 +57,11 @@ h1 .dot { color:var(--gold); }
 
 <div class="agents" id="agents"></div>
 
+<div class="costs" id="costs" style="display:none; margin-top:20px;">
+  <h2 style="font-size:13px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text2);margin-bottom:8px;">Costs & Usage</h2>
+  <div id="costs-body" style="font-size:13px;line-height:1.7;"></div>
+</div>
+
 <script>
 const TOKEN = localStorage.getItem('convoy-token') || prompt('Commander token:') || '';
 localStorage.setItem('convoy-token', TOKEN);
@@ -85,7 +90,20 @@ async function refresh() {
     document.getElementById('c-done').textContent = b.done_today.length;
     document.getElementById('agents').innerHTML = (d.agents||[]).map(a =>
       `<div class="agent"><span class="dot ${a.last_heartbeat ? 'green' : 'red'}"></span>${a.name || a.agent_id}</div>`).join('');
+    refreshCosts();
   } catch(e) { console.error(e); }
+}
+
+async function refreshCosts() {
+  try {
+    const r = await fetch('/api/costs/full', {headers: {Authorization: 'Bearer ' + TOKEN}});
+    if (!r.ok) return;
+    const d = await r.json();
+    const rows = (d.per_agent||[]).filter(a => a.total_cost > 0 || a.tokens_in > 0)
+      .map(a => `<div>${a.name || a.agent_id} <span style="color:var(--text2)">(${a.role}, ${a.work_start}-${a.work_end})</span> — ${a.hours}h × $${a.rate}/h = <b>$${a.cost}</b> + ${a.tokens_in+a.tokens_out} tok <b>$${a.token_cost}</b> = <b>$${a.total_cost}</b></div>`).join('');
+    document.getElementById('costs-body').innerHTML = rows || '<div style="color:var(--text2)">No usage yet</div>';
+    document.getElementById('costs').style.display = 'block';
+  } catch(e) { /* commander token may not cover costs; skip */ }
 }
 refresh();
 setInterval(refresh, 5000);
