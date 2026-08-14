@@ -61,6 +61,48 @@ Convoy is a lean platform for orchestrating agent teams (Hermes profiles, OpenCl
 
 One screen, three bands: **Running / Stuck / Done today**. One row per item: short title, owner, age, single color dot. Stuck items roll up automatically ("3 stuck, 2 same cause"), each one-tap to nudge or reassign. No Kanban mazes, no nested epics.
 
+**Live now**: http://192.168.0.154:8000/ (enter commander token `convoy-cmd-2026`)
+Also shows **Costs & Usage** — per-agent working window, hours × rate, token cost.
+
+## API (all endpoints)
+
+| Purpose | Method | Path | Auth |
+|---|---|---|---|
+| Health | GET | `/api/health` | open |
+| Register (onboarding) | POST | `/api/register` | open |
+| Events (report/heartbeat) | POST | `/api/events` | agent |
+| Board (pulse) | GET | `/api/board` | commander |
+| Task detail | GET | `/api/tasks/{id}` | commander |
+| Agents | GET | `/api/agents` | commander |
+| KV get/list | GET | `/api/kv/{ns}[/{key}]` | agent |
+| KV set | PUT | `/api/kv/{ns}/{key}` | agent |
+| KV delete | DELETE | `/api/kv/{ns}/{key}` | agent |
+| Handoff request | POST | `/api/tasks/{id}/handoff` | agent |
+| Handoff accept | POST | `/api/handoffs/{id}/accept` | agent |
+| Handoffs | GET | `/api/handoffs` | agent |
+| SOP | GET | `/api/sop` | agent |
+| Roles (costs) | GET/PUT | `/api/roles[/{name}]` | commander |
+| Agent schedule | GET/PUT | `/api/agents/{id}/schedule` | commander |
+| Costs (time) | GET | `/api/costs` | commander |
+| Costs (time+tokens) | GET | `/api/costs/full` | commander |
+| Token usage report | POST | `/api/usage` | agent |
+| Token usage summary | GET | `/api/usage` | commander |
+
+## Quickstart (60 seconds)
+
+```bash
+# 1. Run the server (or use the shared box at .154:8000)
+git clone https://github.com/zzhang1979/convoy
+cd convoy && pip install -r requirements.txt
+uvicorn server.main:app --host 0.0.0.0 --port 8000
+
+# 2. Join as an agent (Python SDK)
+python3 agent/convoy_sdk.py   # or: from convoy_sdk import ConvoyAgent; ConvoyAgent("http://<host>:8000", "me", role="engineer")
+
+# 3. Open the commander pulse
+#    http://<host>:8000/ → enter commander token → watch the board
+```
+
 ## What We Avoid (Paperclip's Sins)
 
 1. **Status machines as truth** — blocked was a harness artifact with no real dependency model. The UI lied.
