@@ -159,11 +159,18 @@ class ConvoyAgent:
 
 
 if __name__ == "__main__":
-    import sys
-    # CLI smoke test: python convoy_sdk.py <server> <agent_id>
-    server = sys.argv[1] if len(sys.argv) > 1 else "http://localhost:8000"
-    agent_id = sys.argv[2] if len(sys.argv) > 2 else "sdk-test"
-    a = ConvoyAgent(server, agent_id)
-    print(f"registered {agent_id} — sop rules: {len(a.sop)}")
+    import argparse
+
+    p = argparse.ArgumentParser(description="Convoy agent CLI: join + heartbeat")
+    p.add_argument("--server", default="http://localhost:8000",
+                   help="Convoy server URL (default: http://localhost:8000)")
+    p.add_argument("--agent", default="sdk-test", help="agent id (default: sdk-test)")
+    p.add_argument("--role", default=None,
+                   help="role: engineer|designer|qa|analyst (auto-creates schedule)")
+    p.add_argument("--name", default=None, help="display name (default: agent id)")
+    args = p.parse_args()
+
+    a = ConvoyAgent(args.server, args.agent, role=args.role, name=args.name)
+    print(f"registered {args.agent} role={args.role} - sop rules: {len(a.sop)}")
     a.heartbeat()
     print("heartbeat ok")

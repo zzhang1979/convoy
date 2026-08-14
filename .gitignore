@@ -9,3 +9,7 @@ server/convoy.db
 *.db
 *.db-wal
 *.db-shm
+
+# Agent secrets (never commit)
+.secrets/
+*.secret

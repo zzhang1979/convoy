@@ -109,7 +109,7 @@ board + costs/full from UI at http://192.168.0.154:8000/.
 
 | # | Story | Owner | Status | Notes |
 |---|-------|-------|--------|-------|
-| S6.1 | **README quickstart** — clone, run server, join agent, see board | Jasmine | 🔵 assigned | Test run story |
+| S6.1 | **README quickstart** — clone, run server, join agent, see board | Jasmine | ✅ done | Added requests to requirements.txt; SDK CLI --server/--agent/--role/--name; quickstart verified end-to-end (fresh venv path + CLI join + board) |
 | S6.2 | **Docker healthcheck polish** — compose `depends_on` + startup wait | Michelle | 🔵 assigned | Test run story |
 | S6.3 | **Multi-host agent proof** — one agent reports from a non-.154 host | Michelle | 🔵 assigned | OpenClaw already done; do Hermes |
 | S6.4 | **UI polish** — cost panel styling per Jasmine's design taste | Jasmine | 🔵 assigned | After S6.1 |

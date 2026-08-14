@@ -93,14 +93,18 @@ Also shows **Costs & Usage** — per-agent working window, hours × rate, token 
 ```bash
 # 1. Run the server (or use the shared box at .154:8000)
 git clone https://github.com/zzhang1979/convoy
-cd convoy && pip install -r requirements.txt
-uvicorn server.main:app --host 0.0.0.0 --port 8000
+cd convoy
+python3 -m venv .venv && . .venv/bin/activate
+pip install -r requirements.txt
+CONVOY_COMMANDER_TOKEN=<your-token> uvicorn server.main:app --host 0.0.0.0 --port 8000
+# (default token is "commander-secret" if unset)
 
 # 2. Join as an agent (Python SDK)
-python3 agent/convoy_sdk.py   # or: from convoy_sdk import ConvoyAgent; ConvoyAgent("http://<host>:8000", "me", role="engineer")
+python3 agent/convoy_sdk.py --server http://<host>:8000 --agent me --role engineer
+# or from code: from convoy_sdk import ConvoyAgent; ConvoyAgent("http://<host>:8000", "me", role="engineer")
 
 # 3. Open the commander pulse
-#    http://<host>:8000/ → enter commander token → watch the board
+#    http://<host>:8000/ -> enter commander token -> watch the board
 ```
 
 ## What We Avoid (Paperclip's Sins)
