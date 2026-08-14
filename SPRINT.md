@@ -63,7 +63,7 @@ working time ranges per agent. Cost = active hours × role rate.
 | S3.1 | **Roles + cost rates** — `roles` table (name, cost_per_hour), PUT /api/roles/{name} | Jean | ✅ done | Defaults: engineer 25, designer 30, qa 20, analyst 22, commander 0 |
 | S3.2 | **Agent schedules** — `schedules` table (work_start, work_end, timezone, max_hours_per_day), PUT /api/agents/{id}/schedule | Jean | ✅ done | Michelle 07-15, Jasmine 12-20 |
 | S3.3 | **Cost calculation API** — `GET /api/costs` aggregates active hours × role rate | Jean | ✅ done | Verified: 0.97h × $35 = $33.95 |
-| S3.4 | **Cost + schedule in UI** — show per-agent cost, hours, working window | Jasmine | ⏳ todo | Sprint 4 |
+| S3.4 | **Cost + schedule in UI** — show per-agent cost, hours, working window | Jasmine | ✅ done | Panel: per-agent hours/rate/cost + window, role chips, grand total; S4.4 extends w/ tokens |
 | S3.5 | **Integration tests** — roles, schedules, cost math | Jean | ✅ done | 19 passed total |
 | S3.6 | **Docker deployment** — Dockerfile + compose | Michelle | ⏳ todo | Sprint 4 |
 

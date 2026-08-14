@@ -34,6 +34,26 @@ h1 .dot { color:var(--gold); }
 .agent { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:6px 12px; font-size:12px; display:flex; align-items:center; gap:6px; }
 .agent .dot { width:6px; height:6px; border-radius:50%; }
 .agent .green { background:var(--green); } .agent .red { background:var(--red); }
+/* S3.4 — cost & schedule panel */
+.costs { margin-top:24px; }
+.costs .head { display:flex; align-items:baseline; justify-content:space-between; margin-bottom:12px; }
+.costs .head h2 { font-size:13px; text-transform:uppercase; letter-spacing:1.5px; color:var(--text2); }
+.costs .head .grand { font-size:13px; color:var(--text2); }
+.costs .head .grand b { color:var(--gold); font-size:15px; }
+.cost-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:12px; }
+.cost-card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:14px 16px; }
+.cost-card .top { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+.cost-card .name { font-size:14px; font-weight:600; }
+.cost-card .role { font-size:10px; text-transform:uppercase; letter-spacing:1px; color:var(--gold); background:rgba(212,168,75,0.12); border-radius:20px; padding:2px 8px; }
+.cost-card .win { color:var(--text2); font-size:11px; margin-bottom:10px; }
+.cost-card .win b { color:var(--text); }
+.cost-card .nums { display:flex; justify-content:space-between; border-top:1px solid var(--border); padding-top:8px; font-size:12px; }
+.cost-card .nums .n { text-align:center; }
+.cost-card .nums .n .v { font-size:15px; font-weight:700; color:var(--gold); }
+.cost-card .nums .n .l { font-size:10px; color:var(--text2); text-transform:uppercase; letter-spacing:0.8px; }
+.cost-rolebar { display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
+.cost-role { background:rgba(212,168,75,0.08); border:1px solid var(--border); border-radius:8px; padding:6px 12px; font-size:12px; color:var(--text2); }
+.cost-role b { color:var(--gold); }
 </style>
 </head>
 <body>
@@ -57,9 +77,19 @@ h1 .dot { color:var(--gold); }
 
 <div class="agents" id="agents"></div>
 
+<div class="costs">
+  <div class="head">
+    <h2>Cost &amp; Schedule</h2>
+    <span class="grand" id="grand"></span>
+  </div>
+  <div class="cost-grid" id="costGrid"></div>
+  <div class="cost-rolebar" id="roleBar"></div>
+</div>
+
 <script>
 const TOKEN = localStorage.getItem('convoy-token') || prompt('Commander token:') || '';
 localStorage.setItem('convoy-token', TOKEN);
+const AUTH = {headers: {Authorization: 'Bearer ' + TOKEN}};
 
 function taskRow(t, cls) {
   return `<div class="task ${cls}">
@@ -72,9 +102,27 @@ function taskRow(t, cls) {
   </div>`;
 }
 
+function esc(s) { return String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+function money(v) { return '$' + Number(v || 0).toFixed(2); }
+
+function costCard(a) {
+  const name = esc(a.name || a.agent_id);
+  const win = `${a.work_start || '—'}–${a.work_end || '—'} · ${esc(a.timezone || '')}`;
+  return `<div class="cost-card">
+    <div class="top"><span class="name">${name}</span><span class="role">${esc(a.role || 'unassigned')}</span></div>
+    <div class="win">🕐 <b>${win}</b>${a.max_hours_per_day ? ` · max ${a.max_hours_per_day}h/day` : ''}</div>
+    <div class="nums">
+      <div class="n"><div class="v">${Number(a.hours || 0).toFixed(2)}h</div><div class="l">active</div></div>
+      <div class="n"><div class="v">${money(a.rate)}/h</div><div class="l">rate</div></div>
+      <div class="n"><div class="v">${money(a.cost)}</div><div class="l">cost</div></div>
+    </div>
+  </div>`;
+}
+
 async function refresh() {
   try {
-    const r = await fetch('/api/board', {headers: {Authorization: 'Bearer ' + TOKEN}});
+    const r = await fetch('/api/board', AUTH);
     const d = await r.json();
     const b = d.board;
     document.getElementById('running').innerHTML = b.running.length ? b.running.map(t=>taskRow(t,'running')).join('') : '<div class="empty">Nothing running</div>';
@@ -85,7 +133,19 @@ async function refresh() {
     document.getElementById('c-done').textContent = b.done_today.length;
     document.getElementById('agents').innerHTML = (d.agents||[]).map(a =>
       `<div class="agent"><span class="dot ${a.last_heartbeat ? 'green' : 'red'}"></span>${a.name || a.agent_id}</div>`).join('');
-  } catch(e) { console.error(e); }
+  } catch(e) { console.error('board:', e); }
+  try {
+    const c = await (await fetch('/api/costs', AUTH)).json();
+    const agents = c.per_agent || [];
+    document.getElementById('costGrid').innerHTML = agents.length
+      ? agents.map(costCard).join('')
+      : '<div class="empty">No agents yet</div>';
+    document.getElementById('roleBar').innerHTML = (c.per_role || []).map(r =>
+      `<span class="cost-role"><b>${esc(r.role)}</b> · ${Number(r.hours||0).toFixed(2)}h · ${money(r.cost)}</span>`).join('');
+    document.getElementById('grand').innerHTML = c.total
+      ? `Σ <b>${Number(c.total.hours||0).toFixed(2)}h</b> · <b>${money(c.total.cost)}</b>`
+      : '';
+  } catch(e) { console.error('costs:', e); }
 }
 refresh();
 setInterval(refresh, 5000);
