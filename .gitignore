@@ -9,7 +9,6 @@ server/convoy.db
 *.db
 *.db-wal
 *.db-shm
-
 # Local agent credentials (Sprint 6 test run) — never commit secrets
 .secrets/
 *.secret
