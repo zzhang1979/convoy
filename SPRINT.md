@@ -37,14 +37,30 @@
   2. **A2A timeouts** — long prompts time out; keep A2A messages short, use the shared repo for details.
   3. **Finish what you start** — Michelle's refactor was incomplete (missing models funcs); tests were the safety net. Lead had to complete it.
 
-## Sprint 2 — (draft)
+## Sprint 2 — SOP, KV Store, Handoff & OpenClaw Support ✅ COMPLETE
 
+**Goal**: Make Convoy a *self-documenting collaboration system* — new agents
+onboard and pick up WIP tasks without asking. SOP is enforced by the system,
+context travels via KV pairs, and handoffs are first-class events.
+
+| # | Story | Owner | Status | Notes |
+|---|-------|-------|--------|-------|
+| S2.1 | **KV Store API** — `kv_store` table, PUT/GET by namespace+key, prefix search, agent-scoped writes | Jean | ✅ done | Verified: CRUD + permissions |
+| S2.2 | **Handoff mechanism** — `handoff_requested` events, POST /api/tasks/{id}/handoff, WIP timeline shows handoffs | Jean | ✅ done | New agent sees WIP at registration |
+| S2.3 | **SOP built-in** — `sop_rules` table + GET /api/sop, returned at registration | Jean | ✅ done | 7 default rules seeded |
+| S2.4 | **OpenClaw adapter** — `agent/convoy-openclaw.sh` (curl-based join/report/handoff) + doc | Jean | ✅ done | CT107 agent joined successfully |
+| S2.5 | **Python SDK** — `agent/convoy_sdk.py` (register, event, kv, handoff helpers) | Jean | ✅ done | |
+| S2.6 | **Integration tests** — KV CRUD, handoff flow, SOP delivery | Jean | ✅ done | 13 passed total |
+| S2.7 | **UI: handoff & KV visibility** — show handoff notes + KV context on task cards | Jasmine | ⏳ todo | Sprint 3 carry-over |
+
+## Sprint 3 — (draft)
+
+- S2.7 UI handoff & KV visibility (Jasmine)
 - S1.8 README quickstart (Jasmine)
-- S2.1 Agent SDK: proper Python client lib (not just shell script)
-- S2.2 UI: static file serving + auth flow polish
-- S2.3 Docker deployment (Dockerfile + compose)
-- S2.4 Event replay/rebuild test (projection integrity)
-- S2.5 Multi-host agents (Hermes/OpenClaw integration proof)
+- S3.1 Docker deployment (Dockerfile + compose)
+- S3.2 Hermes kanban bridge (Hermes tasks → Convoy events)
+- S3.3 Multi-host agents (Hermes/OpenClaw integration proof)
+- S3.4 Event replay/rebuild test (projection integrity)
 
 ## Definition of Ready (story is ready when)
 
