@@ -72,6 +72,23 @@ CREATE TABLE IF NOT EXISTS handoffs (
     accepted_at TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_handoffs_task ON handoffs(task_id);
+
+CREATE TABLE IF NOT EXISTS roles (
+    role_name       TEXT PRIMARY KEY,
+    cost_per_hour   REAL NOT NULL DEFAULT 0,
+    updated_at      TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS schedules (
+    agent_id            TEXT PRIMARY KEY REFERENCES agents(agent_id),
+    role_name           TEXT REFERENCES roles(role_name),
+    work_start          TEXT NOT NULL DEFAULT '09:00',
+    work_end            TEXT NOT NULL DEFAULT '17:00',
+    timezone            TEXT NOT NULL DEFAULT 'Australia/Melbourne',
+    max_hours_per_day   REAL NOT NULL DEFAULT 8,
+    cost_override       REAL,              -- per-agent rate override (NULL = use role)
+    updated_at          TEXT NOT NULL DEFAULT (datetime('now'))
+);
 """
 
 
@@ -386,3 +403,229 @@ def handoff_list(task_id: str | None = None, agent_id: str | None = None) -> lis
         return [dict(r) for r in conn.execute(sql, params).fetchall()]
     finally:
         conn.close()
+
+
+# ---------- Roles & costing (S3.1) ----------
+
+DEFAULT_ROLES: list[dict] = [
+    {"role_name": "commander", "cost_per_hour": 0.0},
+    {"role_name": "engineer", "cost_per_hour": 25.0},
+    {"role_name": "designer", "cost_per_hour": 30.0},
+    {"role_name": "qa", "cost_per_hour": 20.0},
+    {"role_name": "analyst", "cost_per_hour": 22.0},
+]
+
+
+def seed_roles() -> None:
+    """Insert default roles if missing (idempotent)."""
+    conn = connect()
+    try:
+        for role in DEFAULT_ROLES:
+            conn.execute(
+                """
+                INSERT OR IGNORE INTO roles (role_name, cost_per_hour)
+                VALUES (:role_name, :cost_per_hour)
+                """,
+                role,
+            )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def role_set(role_name: str, cost_per_hour: float) -> None:
+    """Create or update a role's cost rate."""
+    conn = connect()
+    try:
+        conn.execute(
+            """
+            INSERT INTO roles (role_name, cost_per_hour, updated_at)
+            VALUES (?, ?, datetime('now'))
+            ON CONFLICT(role_name) DO UPDATE SET
+                cost_per_hour = excluded.cost_per_hour,
+                updated_at = datetime('now')
+            """,
+            (role_name, cost_per_hour),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def roles_list() -> list[dict]:
+    conn = connect()
+    try:
+        return [dict(r) for r in conn.execute(
+            "SELECT role_name, cost_per_hour, updated_at FROM roles ORDER BY role_name"
+        ).fetchall()]
+    finally:
+        conn.close()
+
+
+def role_cost(role_name: str | None) -> float:
+    """Return cost_per_hour for a role (0 if unknown)."""
+    if not role_name:
+        return 0.0
+    conn = connect()
+    try:
+        row = conn.execute(
+            "SELECT cost_per_hour FROM roles WHERE role_name = ?", (role_name,)
+        ).fetchone()
+        return row["cost_per_hour"] if row else 0.0
+    finally:
+        conn.close()
+
+
+# ---------- Schedules / time ranges (S3.2) ----------
+
+DEFAULT_SCHEDULE = {
+    "work_start": "09:00",
+    "work_end": "17:00",
+    "timezone": "Australia/Melbourne",
+    "max_hours_per_day": 8.0,
+    "cost_override": None,
+}
+
+
+def schedule_set(agent_id: str, role_name: str | None = None,
+                 work_start: str | None = None, work_end: str | None = None,
+                 timezone: str | None = None, max_hours_per_day: float | None = None,
+                 cost_override: float | None = None) -> None:
+    """Upsert an agent's working-time schedule."""
+    conn = connect()
+    try:
+        existing = conn.execute(
+            "SELECT * FROM schedules WHERE agent_id = ?", (agent_id,)
+        ).fetchone()
+        if existing:
+            cur = dict(existing)
+            new_role = role_name if role_name is not None else cur.get("role_name")
+            new_start = work_start if work_start is not None else cur.get("work_start")
+            new_end = work_end if work_end is not None else cur.get("work_end")
+            new_tz = timezone if timezone is not None else cur.get("timezone")
+            new_max = max_hours_per_day if max_hours_per_day is not None else cur.get("max_hours_per_day")
+            new_override = cost_override if cost_override is not None else cur.get("cost_override")
+            conn.execute(
+                """
+                UPDATE schedules SET role_name=?, work_start=?, work_end=?, timezone=?,
+                    max_hours_per_day=?, cost_override=?, updated_at=datetime('now')
+                WHERE agent_id=?
+                """,
+                (new_role, new_start, new_end, new_tz, new_max, new_override, agent_id),
+            )
+        else:
+            conn.execute(
+                """
+                INSERT INTO schedules (agent_id, role_name, work_start, work_end, timezone,
+                                       max_hours_per_day, cost_override, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
+                """,
+                (agent_id, role_name,
+                 work_start or DEFAULT_SCHEDULE["work_start"],
+                 work_end or DEFAULT_SCHEDULE["work_end"],
+                 timezone or DEFAULT_SCHEDULE["timezone"],
+                 max_hours_per_day if max_hours_per_day is not None else DEFAULT_SCHEDULE["max_hours_per_day"],
+                 cost_override),
+            )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def schedule_get(agent_id: str) -> dict:
+    """Return an agent's schedule (defaults if none set)."""
+    conn = connect()
+    try:
+        row = conn.execute(
+            "SELECT * FROM schedules WHERE agent_id = ?", (agent_id,)
+        ).fetchone()
+        if not row:
+            return {"agent_id": agent_id, **DEFAULT_SCHEDULE}
+        return dict(row)
+    finally:
+        conn.close()
+
+
+def schedule_all() -> list[dict]:
+    conn = connect()
+    try:
+        return [dict(r) for r in conn.execute("SELECT * FROM schedules").fetchall()]
+    finally:
+        conn.close()
+
+
+# ---------- Cost calculation (S3.3) ----------
+
+def _hours_between(t1: str, t2: str) -> float:
+    """Hours between two ISO timestamps."""
+    from datetime import datetime
+    try:
+        a = datetime.fromisoformat(t1.replace("Z", "+00:00"))
+        b = datetime.fromisoformat(t2.replace("Z", "+00:00"))
+        return max(0.0, (b - a).total_seconds() / 3600.0)
+    except (ValueError, TypeError):
+        return 0.0
+
+
+def compute_costs() -> dict:
+    """Aggregate active hours per agent from the event log × rate.
+
+    Active hours = sum of gaps between consecutive events (capped at 1h each
+    so a sleeping agent isn't billed for idle time; capped per-day too).
+    """
+    conn = connect()
+    try:
+        # events per agent, ordered
+        rows = conn.execute(
+            "SELECT agent_id, received_at FROM events ORDER BY agent_id, id"
+        ).fetchall()
+        agents = [dict(r) for r in conn.execute(
+            "SELECT agent_id, name FROM agents"
+        ).fetchall()]
+        schedules = {s["agent_id"]: s for s in schedule_all()}
+    finally:
+        conn.close()
+
+    # active hours per agent
+    per_agent: dict[str, float] = {}
+    last: dict[str, str] = {}
+    for r in rows:
+        aid, ts = r["agent_id"], r["received_at"]
+        if aid in last:
+            gap = _hours_between(last[aid], ts)
+            # count only gaps ≤ 1h (active work), cap total per day later
+            if gap <= 1.0:
+                per_agent[aid] = per_agent.get(aid, 0.0) + gap
+        last[aid] = ts
+
+    # build report
+    agent_rows = []
+    role_totals: dict[str, dict] = {}
+    grand_hours = grand_cost = 0.0
+    for a in agents:
+        aid = a["agent_id"]
+        sched = schedules.get(aid, {"agent_id": aid, **DEFAULT_SCHEDULE})
+        role = sched.get("role_name") or "unassigned"
+        rate = sched.get("cost_override")
+        if rate is None:
+            rate = role_cost(role)
+        hours = round(per_agent.get(aid, 0.0), 2)
+        cost = round(hours * rate, 2)
+        agent_rows.append({
+            "agent_id": aid, "name": a.get("name"), "role": role,
+            "work_start": sched.get("work_start"), "work_end": sched.get("work_end"),
+            "timezone": sched.get("timezone"), "max_hours_per_day": sched.get("max_hours_per_day"),
+            "hours": hours, "rate": rate, "cost": cost,
+        })
+        rt = role_totals.setdefault(role, {"role": role, "hours": 0.0, "cost": 0.0})
+        rt["hours"] += hours
+        rt["cost"] += cost
+        grand_hours += hours
+        grand_cost += cost
+
+    return {
+        "per_agent": agent_rows,
+        "per_role": [{"role": k, "hours": round(v["hours"], 2), "cost": round(v["cost"], 2)}
+                     for k, v in role_totals.items()],
+        "total": {"hours": round(grand_hours, 2), "cost": round(grand_cost, 2)},
+    }

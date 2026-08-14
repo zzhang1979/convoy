@@ -31,6 +31,7 @@ class RegisterRequest(BaseModel):
     name: Optional[str] = None
     capabilities: list[str] = []
     endpoint: Optional[str] = None
+    role: Optional[str] = None
 
 
 class RegisterResponse(BaseModel):
@@ -53,6 +54,7 @@ class EventRequest(BaseModel):
 async def lifespan(_: FastAPI):
     models.init_db()
     models.seed_sop()
+    models.seed_roles()
     yield
 
 
@@ -106,6 +108,8 @@ def register(req: RegisterRequest, response: Response) -> RegisterResponse:
     secret, created = models.register_agent(
         req.agent_id, req.name, req.capabilities, req.endpoint
     )
+    # Auto-create schedule with role (defaults to 09:00-17:00 AEST)
+    models.schedule_set(req.agent_id, role_name=req.role)
     response.status_code = status.HTTP_201_CREATED if created else status.HTTP_200_OK
     # Onboarding payload: SOP + any WIP assigned to this agent
     sop = models.sop_list()
@@ -302,3 +306,64 @@ def handoffs_list(task_id: str = "", authorization: str | None = Header(None)) -
     agent_id = _authorize(authorization)
     items = models.handoff_list(task_id or None, agent_id)
     return {"handoffs": items}
+
+
+# --- Roles & costing (S3.1) -------------------------------------------------
+
+class RoleSetRequest(BaseModel):
+    cost_per_hour: float = Field(ge=0)
+
+
+@app.put("/api/roles/{role_name}")
+def role_put(role_name: str, req: RoleSetRequest,
+             authorization: str | None = Header(None)) -> dict[str, Any]:
+    """Set a role's cost rate (commander only)."""
+    _commander(authorization)
+    models.role_set(role_name, req.cost_per_hour)
+    return {"role_name": role_name, "cost_per_hour": req.cost_per_hour, "status": "set"}
+
+
+@app.get("/api/roles")
+def roles_get(authorization: str | None = Header(None)) -> dict[str, Any]:
+    """List all roles + cost rates."""
+    _commander(authorization)
+    return {"roles": models.roles_list()}
+
+
+# --- Schedules / time ranges (S3.2) -----------------------------------------
+
+class ScheduleRequest(BaseModel):
+    role_name: Optional[str] = None
+    work_start: Optional[str] = None
+    work_end: Optional[str] = None
+    timezone: Optional[str] = None
+    max_hours_per_day: Optional[float] = Field(default=None, ge=0.5, le=24)
+    cost_override: Optional[float] = Field(default=None, ge=0)
+
+
+@app.put("/api/agents/{agent_id}/schedule")
+def schedule_put(agent_id: str, req: ScheduleRequest,
+                 authorization: str | None = Header(None)) -> dict[str, Any]:
+    """Design an agent's working time range (commander only)."""
+    _commander(authorization)
+    models.schedule_set(
+        agent_id, req.role_name, req.work_start, req.work_end,
+        req.timezone, req.max_hours_per_day, req.cost_override,
+    )
+    return {"agent_id": agent_id, "status": "set", **models.schedule_get(agent_id)}
+
+
+@app.get("/api/agents/{agent_id}/schedule")
+def schedule_get(agent_id: str, authorization: str | None = Header(None)) -> dict[str, Any]:
+    """Read an agent's schedule."""
+    _commander(authorization)
+    return models.schedule_get(agent_id)
+
+
+# --- Cost calculation (S3.3) -------------------------------------------------
+
+@app.get("/api/costs")
+def costs_get(authorization: str | None = Header(None)) -> dict[str, Any]:
+    """Cost report: per-agent active hours × role rate, plus role totals."""
+    _commander(authorization)
+    return models.compute_costs()
