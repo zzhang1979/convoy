@@ -9,6 +9,7 @@
   --bg: #0a0e14; --card: rgba(17,24,39,0.72); --gold: #D4A84B;
   --text: #f1f5f9; --text2: #94a3b8; --border: rgba(148,163,184,0.12);
   --green: #34d399; --red: #f87171; --amber: #fbbf24; --blue: #38bdf8;
+  --purple: #a78bfa; --zero: rgba(148,163,184,0.45);
 }
 * { margin:0; padding:0; box-sizing:border-box; }
 body { background:var(--bg); color:var(--text); font-family:Inter,system-ui,sans-serif; padding:24px; }
@@ -35,22 +36,30 @@ h1 .dot { color:var(--gold); }
 .agent .dot { width:6px; height:6px; border-radius:50%; }
 .agent .green { background:var(--green); } .agent .red { background:var(--red); }
 
-/* ---- S6.4: Costs & Usage card ---- */
-.costs { margin-top:20px; background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; }
-.costs h2 { font-size:13px; text-transform:uppercase; letter-spacing:1.5px; color:var(--text2); margin-bottom:4px; display:flex; justify-content:space-between; align-items:center; }
-.costs .grand { color:var(--gold); font-size:14px; letter-spacing:0; text-transform:none; font-weight:600; }
-.cost-table { width:100%; border-collapse:collapse; font-size:13px; margin-top:8px; }
-.cost-table th { text-align:left; color:var(--text2); font-size:10px; text-transform:uppercase; letter-spacing:1.2px; font-weight:600; padding:8px 10px; border-bottom:1px solid var(--border); }
-.cost-table td { padding:9px 10px; border-bottom:1px solid var(--border); vertical-align:middle; }
-.cost-table tr:last-child td { border-bottom:none; }
-.cost-table .num { text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
-.cost-table .agent-cell { font-weight:600; }
-.cost-table .role-chip { background:rgba(212,168,75,0.15); color:var(--gold); border-radius:20px; padding:1px 8px; font-size:11px; margin-left:8px; font-weight:500; }
-.cost-table .window { color:var(--text2); font-size:12px; margin-left:8px; font-weight:400; }
-.cost-table .tok { color:var(--text2); }
-.cost-table .tot { color:var(--gold); font-weight:700; }
-.cost-table .zero-row td { color:var(--text2); }
-@media (max-width:700px){ .cost-table .window, .cost-table th.hide-m, .cost-table td.hide-m { display:none; } }
+/* ── Costs & Usage panel ─────────────────────────────────────── */
+.costs { display:none; margin-top:20px; background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; }
+.costs-head { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:12px; flex-wrap:wrap; gap:6px; }
+.costs-head h2 { font-size:13px; text-transform:uppercase; letter-spacing:1.5px; color:var(--text2); }
+.costs-head .summary { font-size:11px; color:var(--text2); }
+.cost-grid { display:grid; grid-template-columns:2fr 1.1fr 1.3fr .7fr .6fr .75fr .9fr .8fr .8fr; gap:6px 14px; align-items:center; font-size:12px; }
+.cost-grid .h { font-size:10px; text-transform:uppercase; letter-spacing:1px; color:var(--text2); border-bottom:1px solid var(--border); padding-bottom:6px; }
+.cost-grid .c { padding:7px 0; border-bottom:1px solid var(--border); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.cost-grid .num { text-align:right; font-variant-numeric:tabular-nums; }
+.cost-grid .row-0 .c { color:var(--zero); }                 /* no usage yet → dimmed */
+.cost-grid .total { border-bottom:none; padding-top:10px; font-weight:700; font-size:12.5px; }
+.cost-grid .total.grand { border-top:1px solid var(--border); padding-top:10px; font-size:13.5px; color:var(--gold); }
+.chip { display:inline-block; padding:1px 8px; border-radius:20px; font-size:10px; letter-spacing:.4px; text-transform:uppercase; background:rgba(148,163,184,.12); color:var(--text2); }
+.chip.engineer { background:rgba(56,189,248,.14); color:var(--blue); }
+.chip.designer { background:rgba(212,168,75,.16); color:var(--gold); }
+.chip.qa       { background:rgba(52,211,153,.14); color:var(--green); }
+.chip.analyst  { background:rgba(167,139,250,.15); color:var(--purple); }
+.chip.commander{ background:rgba(248,113,113,.14); color:var(--red); }
+.window { font-variant-numeric:tabular-nums; }
+@media (max-width:900px){
+  .cost-grid { grid-template-columns:1fr 1fr; }
+  .cost-grid .h, .cost-grid .c.hide-m { display:none; }
+  .cost-grid .total .hide-m { display:none; }
+}
 </style>
 </head>
 <body>
@@ -74,36 +83,56 @@ h1 .dot { color:var(--gold); }
 
 <div class="agents" id="agents"></div>
 
-<div class="costs" id="costs" style="display:none;">
-  <h2>Costs &amp; Usage <span class="grand" id="costs-grand"></span></h2>
-  <table class="cost-table">
-    <thead>
-      <tr>
-        <th>Agent</th>
-        <th class="num">Hours</th>
-        <th class="num">Rate</th>
-        <th class="num">Time cost</th>
-        <th class="num hide-m">Tokens</th>
-        <th class="num hide-m">Token cost</th>
-        <th class="num">Total</th>
-      </tr>
-    </thead>
-    <tbody id="costs-body"></tbody>
-  </table>
+<div class="costs" id="costs">
+  <div class="costs-head">
+    <h2>Costs &amp; Usage</h2>
+    <div class="summary" id="costs-summary"></div>
+  </div>
+  <div class="cost-grid" id="costs-grid-head">
+    <div class="h">Agent</div><div class="h">Role</div><div class="h hide-m">Window</div>
+    <div class="h num">Hours</div><div class="h num">$/h</div><div class="h num">Time</div>
+    <div class="h num hide-m">Tokens</div><div class="h num hide-m">Tok $</div><div class="h num">Total</div>
+  </div>
+  <div id="costs-body"></div>
 </div>
 
 <script>
 const TOKEN = localStorage.getItem('convoy-token') || prompt('Commander token:') || '';
 localStorage.setItem('convoy-token', TOKEN);
 
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt = n => Number(n || 0).toFixed(2);
+const fmtk = n => Number(n || 0).toLocaleString();
+
+function roleChip(role) {
+  const r = esc(role || 'unassigned');
+  return `<span class="chip ${r.toLowerCase()}">${r}</span>`;
+}
+
 function taskRow(t, cls) {
   return `<div class="task ${cls}">
     <span class="dot" style="background:${t.status==='stuck'?'var(--red)':t.status==='review'?'var(--amber)':t.status==='doing'?'var(--blue)':'var(--green)'}"></span>
     <div style="flex:1">
-      <div>${t.title || t.task_id}</div>
-      <div class="meta">${t.assignee || 'unassigned'} · ${t.task_id}</div>
-      ${t.block_reason ? `<div class="reason">⛔ ${t.block_reason}</div>` : ''}
+      <div>${esc(t.title || t.task_id)}</div>
+      <div class="meta">${esc(t.assignee || 'unassigned')} · ${esc(t.task_id)}</div>
+      ${t.block_reason ? `<div class="reason">⛔ ${esc(t.block_reason)}</div>` : ''}
     </div>
+  </div>`;
+}
+
+function costRow(a) {
+  const zero = !(a.total_cost > 0 || a.tokens_in > 0);
+  const cls = zero ? 'row-0' : '';
+  return `<div class="cost-grid ${cls}">
+    <div class="c">${esc(a.name || a.agent_id)}</div>
+    <div class="c">${roleChip(a.role)}</div>
+    <div class="c window hide-m">${a.work_start ? esc(a.work_start) + '–' + esc(a.work_end) : '—'}</div>
+    <div class="c num">${fmt(a.hours)}</div>
+    <div class="c num">$${fmt(a.rate)}</div>
+    <div class="c num">$${fmt(a.cost)}</div>
+    <div class="c num hide-m">${fmtk(a.tokens_in + a.tokens_out)}</div>
+    <div class="c num hide-m">$${fmt(a.token_cost)}</div>
+    <div class="c num"><b>$${fmt(a.total_cost)}</b></div>
   </div>`;
 }
 
@@ -119,7 +148,7 @@ async function refresh() {
     document.getElementById('c-stuck').textContent = b.stuck.length;
     document.getElementById('c-done').textContent = b.done_today.length;
     document.getElementById('agents').innerHTML = (d.agents||[]).map(a =>
-      `<div class="agent"><span class="dot ${a.last_heartbeat ? 'green' : 'red'}"></span>${a.name || a.agent_id}</div>`).join('');
+      `<div class="agent" title="${esc(a.agent_id)} · last heartbeat ${esc(a.last_heartbeat || 'never')}"><span class="dot ${a.last_heartbeat ? 'green' : 'red'}"></span>${esc(a.name || a.agent_id)}</div>`).join('');
     refreshCosts();
   } catch(e) { console.error(e); }
 }
@@ -129,21 +158,21 @@ async function refreshCosts() {
     const r = await fetch('/api/costs/full', {headers: {Authorization: 'Bearer ' + TOKEN}});
     if (!r.ok) return;
     const d = await r.json();
-    const rows = (d.per_agent||[]).filter(a => a.total_cost > 0 || a.tokens_in > 0);
-    const fmt = n => '$' + Number(n||0).toFixed(2);
-    const tok = n => (n||0) >= 1000 ? (n/1000).toFixed(1)+'k' : (n||0);
-    document.getElementById('costs-body').innerHTML = rows.length ? rows.map(a => `
-      <tr>
-        <td class="agent-cell">${a.name || a.agent_id}<span class="role-chip">${a.role || 'unassigned'}</span><span class="window">${a.work_start}-${a.work_end}</span></td>
-        <td class="num">${(a.hours||0).toFixed(2)}h</td>
-        <td class="num">${fmt(a.rate)}/h</td>
-        <td class="num">${fmt(a.cost)}</td>
-        <td class="num tok hide-m">${tok(a.tokens_in+a.tokens_out)}</td>
-        <td class="num hide-m">${fmt(a.token_cost)}</td>
-        <td class="num tot">${fmt(a.total_cost)}</td>
-      </tr>`).join('') : '<tr class="zero-row"><td colspan="7" style="text-align:center;color:var(--text2)">No usage yet</td></tr>';
-    const grand = rows.reduce((s,a)=>s+(a.total_cost||0),0);
-    document.getElementById('costs-grand').textContent = rows.length ? 'Σ ' + fmt(grand) : '';
+    const rows = (d.per_agent||[]).map(costRow).join('');
+    document.getElementById('costs-body').innerHTML = rows ||
+      '<div style="color:var(--text2);font-size:12px;padding:14px 0">No agents yet — join one with the SDK.</div>';
+    // summary + grand totals
+    const u = d.usage || {};
+    document.getElementById('costs-summary').innerHTML =
+      `${fmtk(u.calls||0)} calls · ${fmtk(u.tokens_in||0)} in / ${fmtk(u.tokens_out||0)} out tokens`;
+    const t = d.total || {};
+    document.getElementById('costs-body').insertAdjacentHTML('beforeend',
+      `<div class="cost-grid">
+        <div class="c total">Grand total</div><div class="c total"></div><div class="c total hide-m"></div>
+        <div class="c total num">${fmt(t.hours)}h</div><div class="c total num"></div>
+        <div class="c total num">$${fmt(t.cost)}</div><div class="c total num hide-m"></div>
+        <div class="c total num hide-m">$${fmt(t.token_cost)}</div><div class="c total num grand">$${fmt(t.grand_total)}</div>
+      </div>`);
     document.getElementById('costs').style.display = 'block';
   } catch(e) { /* commander token may not cover costs; skip */ }
 }

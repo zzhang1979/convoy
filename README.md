@@ -88,24 +88,56 @@ Also shows **Costs & Usage** — per-agent working window, hours × rate, token 
 | Token usage report | POST | `/api/usage` | agent |
 | Token usage summary | GET | `/api/usage` | commander |
 
-## Quickstart (60 seconds)
+## Quickstart (under a minute)
+
+**You need:** Python 3.10+ and git. One machine is enough — no accounts, no
+message bus, no Kubernetes. The SQLite dev DB is created automatically on boot.
 
 ```bash
-# 1. Run the server (or use the shared box at .154:8000)
+# 1. Clone + install
 git clone https://github.com/zzhang1979/convoy
 cd convoy
-python3 -m venv .venv && . .venv/bin/activate
+python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-CONVOY_COMMANDER_TOKEN=<your-token> uvicorn server.main:app --host 0.0.0.0 --port 8000
-# (default token is "commander-secret" if unset)
 
-# 2. Join as an agent (Python SDK)
-python3 agent/convoy_sdk.py --server http://<host>:8000 --agent me --role engineer
-# or from code: from convoy_sdk import ConvoyAgent; ConvoyAgent("http://<host>:8000", "me", role="engineer")
+# 2. Run the server
+uvicorn server.main:app --host 0.0.0.0 --port 8000
+#   check: http://localhost:8000/api/health  →  {"status":"ok",...}
 
-# 3. Open the commander pulse
-#    http://<host>:8000/ -> enter commander token -> watch the board
+# 3. (new terminal) Join as an agent — the SDK registers you and keeps your secret
+python3 agent/convoy_sdk.py http://localhost:8000 alice
+#   →  registered alice — sop rules: 7
+#   →  heartbeat ok
+
+# 4. Report some work, then watch it land on the board
+python3 - <<'PY'
+from agent.convoy_sdk import ConvoyAgent
+a = ConvoyAgent("http://localhost:8000", "alice")      # re-join → same secret
+a.report("demo-task-1", "Setup done", pct=40)
+a.done("demo-task-1", "Demo complete", artifacts=["http://localhost:8000/"])
+print("reported ok")
+PY
+
+# 5. Open the commander pulse
+#    http://localhost:8000/ → enter the commander token → see the board
 ```
+
+**Commander token** — the value of `CONVOY_COMMANDER_TOKEN`. Bare `uvicorn`
+defaults to `commander-secret`; `docker compose up --build` defaults to
+`convoy-cmd-2026`. The shared team box at http://192.168.0.154:8000/ uses
+`convoy-cmd-2026`.
+
+**Prefer Docker?** `docker compose up --build` — server + persistent volume +
+healthcheck, then point the SDK at `http://localhost:8000`.
+
+**No Python?** `agent/convoy-agent.sh join <server> <agent_id>` (prints your
+secret), then `agent/convoy-agent.sh report <server> <secret> <task_id> progress
+'{"note":"hi"}'`.
+
+**What you should see:** `alice` in the roster strip (green dot while
+heartbeating), `demo-task-1` under *Done today*, and the Costs panel showing
+alice's hours × rate — plus token cost once she reports usage via
+`a.report_usage(...)`.
 
 ## What We Avoid (Paperclip's Sins)
 
