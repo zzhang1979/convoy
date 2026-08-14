@@ -102,11 +102,20 @@ loggable by the commander — UI served, Docker deployable, onboarding docs.
 → Michelle sees WIP at registration → accepts → progresses. Commander views
 board + costs/full from UI at http://192.168.0.154:8000/.
 
-## Sprint 6 — (draft)
+## Sprint 6 — Test Run: Team Works Through Convoy 🔄 IN PROGRESS
 
-- S6.1 Hermes kanban bridge (Hermes tasks → Convoy events)
-- S6.2 Multi-host agents (Hermes/OpenClaw integration proof)
-- S6.3 README quickstart (Jasmine)
+**Goal**: Real test run — Jasmine + Michelle pick up real tasks through Convoy
+(register → events → KV → handoff), Anthony tracks via UI.
+
+| # | Story | Owner | Status | Notes |
+|---|-------|-------|--------|-------|
+| S6.1 | **README quickstart** — clone, run server, join agent, see board | Jasmine | 🔵 assigned | Test run story |
+| S6.2 | **Docker healthcheck polish** — compose `depends_on` + startup wait | Michelle | 🔵 assigned | Test run story |
+| S6.3 | **Multi-host agent proof** — one agent reports from a non-.154 host | Michelle | 🔵 assigned | OpenClaw already done; do Hermes |
+| S6.4 | **UI polish** — cost panel styling per Jasmine's design taste | Jasmine | 🔵 assigned | After S6.1 |
+
+**Test-run protocol**: both agents register via SDK, report via events, use KV
+for context, hand off if switching. Anthony watches the board live.
 
 ## Definition of Ready (story is ready when)
 
