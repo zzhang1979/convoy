@@ -34,6 +34,23 @@ h1 .dot { color:var(--gold); }
 .agent { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:6px 12px; font-size:12px; display:flex; align-items:center; gap:6px; }
 .agent .dot { width:6px; height:6px; border-radius:50%; }
 .agent .green { background:var(--green); } .agent .red { background:var(--red); }
+
+/* ---- S6.4: Costs & Usage card ---- */
+.costs { margin-top:20px; background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; }
+.costs h2 { font-size:13px; text-transform:uppercase; letter-spacing:1.5px; color:var(--text2); margin-bottom:4px; display:flex; justify-content:space-between; align-items:center; }
+.costs .grand { color:var(--gold); font-size:14px; letter-spacing:0; text-transform:none; font-weight:600; }
+.cost-table { width:100%; border-collapse:collapse; font-size:13px; margin-top:8px; }
+.cost-table th { text-align:left; color:var(--text2); font-size:10px; text-transform:uppercase; letter-spacing:1.2px; font-weight:600; padding:8px 10px; border-bottom:1px solid var(--border); }
+.cost-table td { padding:9px 10px; border-bottom:1px solid var(--border); vertical-align:middle; }
+.cost-table tr:last-child td { border-bottom:none; }
+.cost-table .num { text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.cost-table .agent-cell { font-weight:600; }
+.cost-table .role-chip { background:rgba(212,168,75,0.15); color:var(--gold); border-radius:20px; padding:1px 8px; font-size:11px; margin-left:8px; font-weight:500; }
+.cost-table .window { color:var(--text2); font-size:12px; margin-left:8px; font-weight:400; }
+.cost-table .tok { color:var(--text2); }
+.cost-table .tot { color:var(--gold); font-weight:700; }
+.cost-table .zero-row td { color:var(--text2); }
+@media (max-width:700px){ .cost-table .window, .cost-table th.hide-m, .cost-table td.hide-m { display:none; } }
 </style>
 </head>
 <body>
@@ -57,9 +74,22 @@ h1 .dot { color:var(--gold); }
 
 <div class="agents" id="agents"></div>
 
-<div class="costs" id="costs" style="display:none; margin-top:20px;">
-  <h2 style="font-size:13px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text2);margin-bottom:8px;">Costs & Usage</h2>
-  <div id="costs-body" style="font-size:13px;line-height:1.7;"></div>
+<div class="costs" id="costs" style="display:none;">
+  <h2>Costs &amp; Usage <span class="grand" id="costs-grand"></span></h2>
+  <table class="cost-table">
+    <thead>
+      <tr>
+        <th>Agent</th>
+        <th class="num">Hours</th>
+        <th class="num">Rate</th>
+        <th class="num">Time cost</th>
+        <th class="num hide-m">Tokens</th>
+        <th class="num hide-m">Token cost</th>
+        <th class="num">Total</th>
+      </tr>
+    </thead>
+    <tbody id="costs-body"></tbody>
+  </table>
 </div>
 
 <script>
@@ -99,9 +129,21 @@ async function refreshCosts() {
     const r = await fetch('/api/costs/full', {headers: {Authorization: 'Bearer ' + TOKEN}});
     if (!r.ok) return;
     const d = await r.json();
-    const rows = (d.per_agent||[]).filter(a => a.total_cost > 0 || a.tokens_in > 0)
-      .map(a => `<div>${a.name || a.agent_id} <span style="color:var(--text2)">(${a.role}, ${a.work_start}-${a.work_end})</span> — ${a.hours}h × $${a.rate}/h = <b>$${a.cost}</b> + ${a.tokens_in+a.tokens_out} tok <b>$${a.token_cost}</b> = <b>$${a.total_cost}</b></div>`).join('');
-    document.getElementById('costs-body').innerHTML = rows || '<div style="color:var(--text2)">No usage yet</div>';
+    const rows = (d.per_agent||[]).filter(a => a.total_cost > 0 || a.tokens_in > 0);
+    const fmt = n => '$' + Number(n||0).toFixed(2);
+    const tok = n => (n||0) >= 1000 ? (n/1000).toFixed(1)+'k' : (n||0);
+    document.getElementById('costs-body').innerHTML = rows.length ? rows.map(a => `
+      <tr>
+        <td class="agent-cell">${a.name || a.agent_id}<span class="role-chip">${a.role || 'unassigned'}</span><span class="window">${a.work_start}-${a.work_end}</span></td>
+        <td class="num">${(a.hours||0).toFixed(2)}h</td>
+        <td class="num">${fmt(a.rate)}/h</td>
+        <td class="num">${fmt(a.cost)}</td>
+        <td class="num tok hide-m">${tok(a.tokens_in+a.tokens_out)}</td>
+        <td class="num hide-m">${fmt(a.token_cost)}</td>
+        <td class="num tot">${fmt(a.total_cost)}</td>
+      </tr>`).join('') : '<tr class="zero-row"><td colspan="7" style="text-align:center;color:var(--text2)">No usage yet</td></tr>';
+    const grand = rows.reduce((s,a)=>s+(a.total_cost||0),0);
+    document.getElementById('costs-grand').textContent = rows.length ? 'Σ ' + fmt(grand) : '';
     document.getElementById('costs').style.display = 'block';
   } catch(e) { /* commander token may not cover costs; skip */ }
 }
