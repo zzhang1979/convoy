@@ -67,12 +67,29 @@ working time ranges per agent. Cost = active hours × role rate.
 | S3.5 | **Integration tests** — roles, schedules, cost math | Jean | ✅ done | 19 passed total |
 | S3.6 | **Docker deployment** — Dockerfile + compose | Michelle | ⏳ todo | Sprint 4 |
 
-## Sprint 4 — (draft)
+## Sprint 4 — Token Usage + UI + Docker ✅ COMPLETE (usage core)
 
-- S3.4 Cost + schedule in UI (Jasmine)
-- S3.6 Docker deployment (Michelle)
-- S4.1 Hermes kanban bridge (Hermes tasks → Convoy events)
-- S4.2 Multi-host agents (Hermes/OpenClaw integration proof)
+**Goal**: Track LLM token usage per agent (self-reported), fold token cost
+into the costing model, ship remaining UI/Docker stories.
+
+| # | Story | Owner | Status | Notes |
+|---|-------|-------|--------|-------|
+| S4.1 | **Token usage intake** — `usage` table, POST /api/usage (self-report) | Jean | ✅ done | Agents report after LLM calls |
+| S4.2 | **Usage aggregation** — GET /api/usage (per agent/model, filters) | Jean | ✅ done | Verified: 430K+75K tok = $2.42 |
+| S4.3 | **Token cost in costing** — roles get in/out per-1M pricing, /api/costs/full | Jean | ✅ done | Verified: time $33.95 + tokens $2.42 = $36.37 |
+| S4.4 | **Cost + usage in UI** — pulse screen shows cost/hours/tokens/window | Jasmine | ⏳ todo | Sprint 5 |
+| S4.5 | **Integration tests** — usage intake, aggregation, token math | Jean | ✅ done | 24 passed total |
+| S4.6 | **Docker deployment** — Dockerfile + compose | Michelle | ⏳ todo | Sprint 5 |
+
+**Note**: Simple path (self-report) done. Complex path (cross-platform auto-sync
+via provider APIs) deferred to discussion — that's the "pair for later" item.
+
+## Sprint 5 — (draft)
+
+- S4.4 Cost + usage in UI (Jasmine)
+- S4.6 Docker deployment (Michelle)
+- S5.1 Hermes kanban bridge (Hermes tasks → Convoy events)
+- S5.2 Multi-host agents (Hermes/OpenClaw integration proof)
 
 ## Definition of Ready (story is ready when)
 
