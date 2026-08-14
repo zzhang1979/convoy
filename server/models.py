@@ -744,7 +744,7 @@ def usage_summary(agent_id: str | None = None, task_id: str | None = None,
             """,
             params,
         ).fetchall()
-        agents = {a["agent_id"]: a.get("name") for a in
+        agents = {a["agent_id"]: a["name"] for a in
                   conn.execute("SELECT agent_id, name FROM agents").fetchall()}
         schedules = {s["agent_id"]: s for s in schedule_all()}
     finally:
