@@ -431,9 +431,34 @@ DEFAULT_ROLES: list[dict] = [
 
 
 def seed_roles() -> None:
-    """Insert default roles if missing (idempotent)."""
+    """Insert default roles if missing (idempotent). Also migrates old DBs."""
     conn = connect()
     try:
+        # migrate: add token-cost columns if missing (pre-Sprint-4 DBs)
+        cols = {r["name"] for r in conn.execute("PRAGMA table_info(roles)").fetchall()}
+        if "in_cost_per_1m" not in cols:
+            conn.execute("ALTER TABLE roles ADD COLUMN in_cost_per_1m REAL NOT NULL DEFAULT 3.0")
+        if "out_cost_per_1m" not in cols:
+            conn.execute("ALTER TABLE roles ADD COLUMN out_cost_per_1m REAL NOT NULL DEFAULT 15.0")
+        # migrate: add usage table if missing (pre-Sprint-4 DBs)
+        tables = {r["name"] for r in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
+        if "usage" not in tables:
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS usage (
+                    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                    agent_id    TEXT NOT NULL,
+                    task_id     TEXT,
+                    model       TEXT NOT NULL DEFAULT 'unknown',
+                    tokens_in   INTEGER NOT NULL DEFAULT 0,
+                    tokens_out  INTEGER NOT NULL DEFAULT 0,
+                    reported_at TEXT NOT NULL DEFAULT (datetime('now'))
+                )
+                """
+            )
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_usage_agent ON usage(agent_id)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_usage_task ON usage(task_id)")
         for role in DEFAULT_ROLES:
             conn.execute(
                 """
@@ -442,13 +467,6 @@ def seed_roles() -> None:
                 """,
                 role,
             )
-        # ensure token-cost columns exist on pre-existing rows
-        conn.execute(
-            "UPDATE roles SET in_cost_per_1m = 3.0 WHERE in_cost_per_1m IS NULL"
-        )
-        conn.execute(
-            "UPDATE roles SET out_cost_per_1m = 15.0 WHERE out_cost_per_1m IS NULL"
-        )
         conn.commit()
     finally:
         conn.close()
