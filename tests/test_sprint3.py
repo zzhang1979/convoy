@@ -58,6 +58,8 @@ def test_set_role_cost(client):
 
 
 def test_schedule_set_and_get(client):
+    # agent must exist first (FK constraint on schedules.agent_id)
+    _reg(client, "test-agent")
     r = client.put("/api/agents/test-agent/schedule",
                    json={"role_name": "engineer", "work_start": "22:00", "work_end": "06:00",
                          "timezone": "America/New_York", "max_hours_per_day": 6},
@@ -103,12 +105,11 @@ def test_cost_math(client):
     import sqlite3
     from server.models import db_path
     conn = sqlite3.connect(str(db_path()))
-    base = "2026-08-14 09:00:00"
-    for i, mins in enumerate([0, 30, 60]):
+    times = ["2026-08-14 09:00:00", "2026-08-14 09:30:00", "2026-08-14 10:00:00"]
+    for i, t in enumerate(times):
         conn.execute(
             "INSERT INTO events (event_id, agent_id, task_id, type, payload, received_at) VALUES (?,?,?,?,?,?)",
-            (f"ce-{i}", "cost-eng", "CT1", "progress", "{}",
-             f"2026-08-14 09:{mins:02d}:00"),
+            (f"ce-{i}", "cost-eng", "CT1", "progress", "{}", t),
         )
     conn.commit()
     conn.close()
