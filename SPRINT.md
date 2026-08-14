@@ -53,14 +53,26 @@ context travels via KV pairs, and handoffs are first-class events.
 | S2.6 | **Integration tests** — KV CRUD, handoff flow, SOP delivery | Jean | ✅ done | 13 passed total |
 | S2.7 | **UI: handoff & KV visibility** — show handoff notes + KV context on task cards | Jasmine | ⏳ todo | Sprint 3 carry-over |
 
-## Sprint 3 — (draft)
+## Sprint 3 — Role-Based Costing & Agent Time Ranges ✅ COMPLETE
 
-- S2.7 UI handoff & KV visibility (Jasmine)
-- S1.8 README quickstart (Jasmine)
-- S3.1 Docker deployment (Dockerfile + compose)
-- S3.2 Hermes kanban bridge (Hermes tasks → Convoy events)
-- S3.3 Multi-host agents (Hermes/OpenClaw integration proof)
-- S3.4 Event replay/rebuild test (projection integrity)
+**Goal**: Track what each agent role costs and let the commander design
+working time ranges per agent. Cost = active hours × role rate.
+
+| # | Story | Owner | Status | Notes |
+|---|-------|-------|--------|-------|
+| S3.1 | **Roles + cost rates** — `roles` table (name, cost_per_hour), PUT /api/roles/{name} | Jean | ✅ done | Defaults: engineer 25, designer 30, qa 20, analyst 22, commander 0 |
+| S3.2 | **Agent schedules** — `schedules` table (work_start, work_end, timezone, max_hours_per_day), PUT /api/agents/{id}/schedule | Jean | ✅ done | Michelle 07-15, Jasmine 12-20 |
+| S3.3 | **Cost calculation API** — `GET /api/costs` aggregates active hours × role rate | Jean | ✅ done | Verified: 0.97h × $35 = $33.95 |
+| S3.4 | **Cost + schedule in UI** — show per-agent cost, hours, working window | Jasmine | ⏳ todo | Sprint 4 |
+| S3.5 | **Integration tests** — roles, schedules, cost math | Jean | ✅ done | 19 passed total |
+| S3.6 | **Docker deployment** — Dockerfile + compose | Michelle | ⏳ todo | Sprint 4 |
+
+## Sprint 4 — (draft)
+
+- S3.4 Cost + schedule in UI (Jasmine)
+- S3.6 Docker deployment (Michelle)
+- S4.1 Hermes kanban bridge (Hermes tasks → Convoy events)
+- S4.2 Multi-host agents (Hermes/OpenClaw integration proof)
 
 ## Definition of Ready (story is ready when)
 
