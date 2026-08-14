@@ -8,10 +8,13 @@ from __future__ import annotations
 import json
 import os
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Any, Literal, Optional
 
 from fastapi import FastAPI, Header, HTTPException, Response, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from . import models
@@ -59,6 +62,16 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(title="Convoy", version="0.1.0", lifespan=lifespan)
+
+# Serve the commander pulse UI at /ui/ and /
+UI_DIR = Path(__file__).resolve().parent.parent / "ui"
+app.mount("/ui", StaticFiles(directory=str(UI_DIR), html=True), name="ui")
+
+
+@app.get("/")
+def index() -> FileResponse:
+    """Commander UI at the root."""
+    return FileResponse(UI_DIR / "index.html")
 
 # Dev-friendly CORS so Jasmine's pulse UI (S1.6) can fetch the API
 # from a different origin during development.
