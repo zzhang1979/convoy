@@ -20,13 +20,13 @@
 
 | # | Story | Owner | Status | Notes |
 |---|-------|-------|--------|-------|
-| S1.1 | Server skeleton: FastAPI app, SQLite `events` + `agents` tables, health endpoint | Michelle | done | verified locally (pytest + uvicorn); branch feat/s1.1-server-skeleton, push pending LXC sshd |
-| S1.2 | `POST /api/register` + `POST /api/events` (idempotent, event_id dedupe) | Michelle | done | verified locally (pytest + uvicorn); branch feat/s1.1-server-skeleton, push pending LXC sshd |
+| S1.1 | Server skeleton: FastAPI app, SQLite `events` + `agents` tables, health endpoint | Michelle | todo | |
+| S1.2 | `POST /api/register` + `POST /api/events` (idempotent, event_id dedupe) | Michelle | todo | |
 | S1.3 | Status derivation module (`derive.py`: done/stuck/doing/todo from events) | Jean | todo | |
 | S1.4 | Commander pulse API: `GET /api/board` (running/stuck/done-today) | Jean | todo | |
 | S1.5 | Agent onboarding helper script (`agent/convoy-agent.sh` — join + heartbeat + report) | Jean | todo | |
 | S1.6 | Commander pulse UI (single screen, 3 bands, minimal HTML/JS) | Jasmine | todo | |
-| S1.7 | Integration test: 3 agents register, work, report, board reflects reality | Michelle | in_progress | 7/8 pass locally; board assertion skips until S1.4 lands; push pending LXC sshd |
+| S1.7 | Integration test: 3 agents register, work, report, board reflects reality | Michelle | todo | |
 | S1.8 | README update: quickstart (run server, join agent, see board) | Jasmine | todo | |
 
 ## Sprint 2 — (draft)
