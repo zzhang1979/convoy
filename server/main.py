@@ -230,7 +230,40 @@ def task_detail(task_id: str, authorization: str | None = Header(None)) -> dict[
         "projection": proj.to_dict() if proj else None,
         "kv": kv,
         "user_story": story,
+        "links": models.links_for(task_id),  # W5
     }
+
+
+@app.get("/api/tasks/{task_id}/links")
+def task_links_get(task_id: str, authorization: str | None = Header(None)) -> dict[str, Any]:
+    """Task relationships (W5)."""
+    _commander(authorization)
+    return {"task_id": task_id, **models.links_for(task_id)}
+
+
+class LinkRequest(BaseModel):
+    to_task: str = Field(min_length=1, max_length=128)
+    kind: str = Field(default="relates_to", pattern="^(relates_to|blocks|duplicates|parent)$")
+
+
+@app.post("/api/tasks/{task_id}/links")
+def task_links_post(task_id: str, body: LinkRequest,
+                    authorization: str | None = Header(None)) -> dict[str, Any]:
+    """Create a link from task_id to body.to_task (agent auth)."""
+    agent_id = _authorize(authorization)
+    created = models.task_link(task_id, body.to_task, body.kind, agent_id)
+    return {"from_task": task_id, "to_task": body.to_task, "kind": body.kind,
+            "created": created}
+
+
+@app.get("/api/search")
+def search(q: str = "", authorization: str | None = Header(None)) -> dict[str, Any]:
+    """Full-text search over KV docs + artifacts (W3)."""
+    _commander(authorization)
+    if not q.strip():
+        return {"query": q, "results": []}
+    results = models.search(q.strip())
+    return {"query": q, "results": results}
 
 
 @app.get("/api/agents")

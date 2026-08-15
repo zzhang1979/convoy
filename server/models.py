@@ -73,6 +73,24 @@ CREATE TABLE IF NOT EXISTS handoffs (
 );
 CREATE INDEX IF NOT EXISTS idx_handoffs_task ON handoffs(task_id);
 
+-- W5: task relationships (hyperlinks between work items)
+CREATE TABLE IF NOT EXISTS task_links (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    from_task   TEXT NOT NULL,
+    to_task     TEXT NOT NULL,
+    kind        TEXT NOT NULL DEFAULT 'relates_to',  -- relates_to|blocks|duplicates|parent
+    created_by  TEXT NOT NULL,
+    created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE (from_task, to_task, kind)
+);
+CREATE INDEX IF NOT EXISTS idx_links_from ON task_links(from_task);
+CREATE INDEX IF NOT EXISTS idx_links_to   ON task_links(to_task);
+
+-- W3: full-text search index over KV values + task notes/artifacts
+CREATE VIRTUAL TABLE IF NOT EXISTS search_idx USING fts5(
+    namespace, key, content, kind, task_id, UNINDEXED='namespace,key,kind,task_id'
+);
+
 CREATE TABLE IF NOT EXISTS roles (
     role_name       TEXT PRIMARY KEY,
     cost_per_hour   REAL NOT NULL DEFAULT 0,
@@ -257,7 +275,41 @@ def kv_set(namespace: str, key: str, value: Any, updated_by: str) -> None:
             """,
             (namespace, key, json.dumps(value), updated_by),
         )
+        # W3: keep the FTS index in sync (skip secret-looking namespaces)
+        if not (key in ("secret", "token") or "secret" in namespace or "token" in namespace):
+            _index_doc(conn, namespace, key, json.dumps(value), task_id=namespace[5:] if namespace.startswith("task:") else None)
         conn.commit()
+    finally:
+        conn.close()
+
+
+def _index_doc(conn, namespace: str, key: str, content: str,
+               kind: str = "kv", task_id: str | None = None) -> None:
+    """Insert/update one document in the FTS index (W3)."""
+    try:
+        conn.execute(
+            "INSERT INTO search_idx (namespace, key, content, kind, task_id) "
+            "VALUES (?, ?, ?, ?, ?) "
+            "ON CONFLICT(rowid) DO UPDATE SET content = excluded.content",
+            (namespace, key, content, kind, task_id),
+        )
+    except sqlite3.OperationalError:
+        pass  # FTS5 unavailable on some builds — search degrades gracefully
+
+
+def search(query: str, limit: int = 20) -> list[dict]:
+    """Full-text search over KV docs + artifacts (W3)."""
+    conn = connect()
+    try:
+        q = " ".join(f'"{w}"*' for w in query.split()) if query.split() else query
+        rows = conn.execute(
+            "SELECT namespace, key, kind, task_id, snippet(search_idx, 2, '[', ']', '…', 12) AS snip "
+            "FROM search_idx WHERE search_idx MATCH ? ORDER BY rank LIMIT ?",
+            (q, limit),
+        ).fetchall()
+        return [dict(r) for r in rows]
+    except sqlite3.OperationalError:
+        return []
     finally:
         conn.close()
 
@@ -329,6 +381,38 @@ def kv_list_namespace(namespace: str) -> dict:
     for item in kv_list(namespace):
         out[item["key"]] = item["value"]
     return out
+
+
+# ---------- Task links (W5) ----------
+
+def task_link(from_task: str, to_task: str, kind: str, created_by: str) -> bool:
+    """Create a link between tasks; True if new, False if duplicate."""
+    conn = connect()
+    try:
+        cur = conn.execute(
+            "INSERT OR IGNORE INTO task_links (from_task, to_task, kind, created_by) "
+            "VALUES (?, ?, ?, ?)",
+            (from_task, to_task, kind, created_by),
+        )
+        conn.commit()
+        return cur.rowcount > 0
+    finally:
+        conn.close()
+
+
+def links_for(task_id: str) -> dict:
+    """Links for a task: {'outgoing': [...], 'incoming': [...]}."""
+    conn = connect()
+    try:
+        out = [dict(r) for r in conn.execute(
+            "SELECT from_task, to_task, kind, created_at FROM task_links "
+            "WHERE from_task = ? ORDER BY id", (task_id,)).fetchall()]
+        inc = [dict(r) for r in conn.execute(
+            "SELECT from_task, to_task, kind, created_at FROM task_links "
+            "WHERE to_task = ? ORDER BY id", (task_id,)).fetchall()]
+        return {"outgoing": out, "incoming": inc}
+    finally:
+        conn.close()
 
 
 # ---------- SOP rules (S2.3) ----------
