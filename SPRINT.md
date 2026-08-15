@@ -138,11 +138,11 @@ project grouping, role attribution, user-story artifacts.
 
 | # | Story | Owner | Status | Notes |
 |---|-------|-------|--------|-------|
-| S7.1 | **W2: Project grouping** — tasks get `project`, board filters by project | Jean | 🔵 assigned | Additive: payload.project |
-| S7.2 | **W6: User-story artifacts** — SOP rule + KV template, shown in detail | Jean | 🔵 assigned | `task:<id>/user_story` |
-| S7.3 | **W1: Task drill-down** — `GET /api/tasks/{id}/timeline` + UI detail view | Jean | 🔵 assigned | events+KV+artifacts |
-| S7.4 | **W4: Role attribution** — snapshot role on events, show in board+detail | Jean | 🔵 assigned | historical accuracy |
-| S7.5 | **Tests + deploy + docs** | Jean | 🔵 assigned | wishlist → done |
+| S7.1 | **W2: Project grouping** — tasks get `project`, board filters by project | Jean | ✅ done | `?project=` + UI dropdown |
+| S7.2 | **W6: User-story artifacts** — SOP rule + KV template, shown in detail | Jean | ✅ done | `task:<id>/user_story` |
+| S7.3 | **W1: Task drill-down** — `GET /api/tasks/{id}/timeline` + UI detail view | Jean | ✅ done | events+KV+artifacts+story |
+| S7.4 | **W4: Role attribution** — snapshot role on events, show in board+detail | Jean | ✅ done | historical accuracy |
+| S7.5 | **Tests + deploy + docs** | Jean | ✅ done | 29 passed |
 
 ## Definition of Ready (story is ready when)
 

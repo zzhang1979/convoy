@@ -66,6 +66,13 @@ h1 .dot { color:var(--gold); }
 <h1>Convoy <span class="dot">◈</span> Commander Pulse</h1>
 <div class="sub">Agent team orchestration — derived truth from the event log · <span id="ts"></span> · token: <span id="tok" style="color:var(--gold)">•••</span></div>
 
+<div style="margin-bottom:14px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+  <select id="proj-filter" style="background:var(--card); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:5px 10px; font-size:12px;">
+    <option value="">All projects</option>
+  </select>
+  <span style="font-size:11px; color:var(--text2);">click a task to drill in</span>
+</div>
+
 <div class="bands">
   <div class="band">
     <h2>Running <span class="count" id="c-running">0</span></h2>
@@ -82,6 +89,14 @@ h1 .dot { color:var(--gold); }
 </div>
 
 <div class="agents" id="agents"></div>
+
+<div id="detail" style="display:none; margin-top:20px; background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px;">
+  <div class="costs-head">
+    <h2 id="detail-title">Task detail</h2>
+    <span id="detail-close" style="cursor:pointer; color:var(--text2); font-size:12px;">✕ close</span>
+  </div>
+  <div id="detail-body" style="font-size:13px; line-height:1.7;"></div>
+</div>
 
 <div class="costs" id="costs">
   <div class="costs-head">
@@ -111,14 +126,51 @@ function roleChip(role) {
 }
 
 function taskRow(t, cls) {
-  return `<div class="task ${cls}">
+  return `<div class="task ${cls}" style="cursor:pointer" onclick="drill('${esc(t.task_id)}')">
     <span class="dot" style="background:${t.status==='stuck'?'var(--red)':t.status==='review'?'var(--amber)':t.status==='doing'?'var(--blue)':'var(--green)'}"></span>
     <div style="flex:1">
       <div>${esc(t.title || t.task_id)}</div>
-      <div class="meta">${esc(t.assignee || 'unassigned')} · ${esc(t.task_id)}</div>
+      <div class="meta">${esc(t.assignee || 'unassigned')} · ${esc(t.task_id)}${t.project ? ' · <b style="color:var(--gold)">' + esc(t.project) + '</b>' : ''}</div>
       ${t.block_reason ? `<div class="reason">⛔ ${esc(t.block_reason)}</div>` : ''}
     </div>
   </div>`;
+}
+
+let PROJ = '';
+
+async function drill(taskId) {
+  try {
+    const r = await fetch('/api/tasks/' + encodeURIComponent(taskId), {headers: {Authorization: 'Bearer ' + TOKEN}});
+    if (!r.ok) return;
+    const d = await r.json();
+    const p = d.projection || {};
+    const roles = Object.entries(p.roles || {}).map(([a, r]) => `${esc(a)} (${esc(r)})`).join(', ') || '—';
+    const story = d.user_story;
+    let html = '';
+    if (story) {
+      html += `<div style="background:rgba(212,168,75,.08); border:1px solid rgba(212,168,75,.25); border-radius:8px; padding:10px; margin-bottom:12px;">
+        <div style="color:var(--gold); font-size:11px; text-transform:uppercase; letter-spacing:1px; margin-bottom:4px;">User story</div>
+        <b>As a</b> ${esc(story.as_a)} — <b>I want</b> ${esc(story.i_want)} — <b>so that</b> ${esc(story.so_that)}
+        ${story.acceptance ? `<div style="margin-top:4px; color:var(--text2);"><b>Acceptance:</b> ${story.acceptance.map(esc).join(' · ')}</div>` : ''}
+      </div>`;
+    }
+    html += `<div><b>Project:</b> ${esc(p.project || '—')} · <b>Status:</b> ${esc(p.status)} · <b>Assignee:</b> ${esc(p.assignee || '—')}</div>
+      <div><b>Agents & roles:</b> ${roles}</div>
+      <div><b>Artifacts:</b> ${(p.artifacts||[]).map(a => `<a href="${esc(a.url)}" target="_blank" style="color:var(--blue)">${esc(a.url)}</a>`).join(', ') || '—'}</div>
+      <div style="margin-top:12px; font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--text2);">Event timeline</div>`;
+    html += (d.events||[]).map(e => {
+      const pl = Object.entries(e.payload||{}).filter(([k]) => !['role','assignee','title','project','note','pct'].includes(k));
+      const extra = pl.length ? ' · ' + pl.map(([k,v]) => `${k}=${esc(JSON.stringify(v))}`).join(' ') : '';
+      return `<div style="padding:4px 0; border-bottom:1px solid var(--border); display:flex; gap:8px;">
+        <span style="color:var(--text2); white-space:nowrap; font-size:11px;">${esc((e.received_at||'').slice(11,19))}</span>
+        <span style="color:var(--gold); white-space:nowrap;">${esc(e.type)}</span>
+        <span style="color:var(--text2);">${esc((e.payload||{}).note || '')}${extra}</span>
+      </div>`;
+    }).join('') || '<div class="empty">No events</div>';
+    document.getElementById('detail-title').textContent = `${p.title || taskId}`;
+    document.getElementById('detail-body').innerHTML = html;
+    document.getElementById('detail').style.display = 'block';
+  } catch(e) { console.error(e); }
 }
 
 function costRow(a) {
@@ -139,7 +191,8 @@ function costRow(a) {
 
 async function refresh() {
   try {
-    const r = await fetch('/api/board', {headers: {Authorization: 'Bearer ' + TOKEN}});
+    const q = PROJ ? '?project=' + encodeURIComponent(PROJ) : '';
+    const r = await fetch('/api/board' + q, {headers: {Authorization: 'Bearer ' + TOKEN}});
     if (r.status === 401 || r.status === 403) {
       localStorage.removeItem('convoy-token');
       location.reload();  // re-prompt for token
@@ -147,6 +200,11 @@ async function refresh() {
     }
     const d = await r.json();
     const b = d.board;
+    // project dropdown (W2)
+    const sel = document.getElementById('proj-filter');
+    const cur = sel.value;
+    const opts = ['', ...(d.projects||[])].map(p => `<option value="${esc(p)}"${p===cur?' selected':''}>${p ? esc(p) : 'All projects'}</option>`).join('');
+    if (sel.innerHTML !== opts) sel.innerHTML = opts;
     document.getElementById('running').innerHTML = b.running.length ? b.running.map(t=>taskRow(t,'running')).join('') : '<div class="empty">Nothing running</div>';
     document.getElementById('stuck').innerHTML = b.stuck.length ? b.stuck.map(t=>taskRow(t,'stuck')).join('') : '<div class="empty">No blockers 🎉</div>';
     document.getElementById('done').innerHTML = b.done_today.length ? b.done_today.map(t=>taskRow(t,'done')).join('') : '<div class="empty">Nothing done today</div>';
@@ -185,6 +243,13 @@ async function refreshCosts() {
 refresh();
 setInterval(refresh, 5000);
 document.getElementById('ts').textContent = new Date().toLocaleTimeString();
+document.getElementById('proj-filter').addEventListener('change', e => {
+  PROJ = e.target.value;
+  refresh();
+});
+document.getElementById('detail-close').addEventListener('click', () => {
+  document.getElementById('detail').style.display = 'none';
+});
 </script>
 </body>
 </html>
