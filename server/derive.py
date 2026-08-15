@@ -39,6 +39,8 @@ class TaskProjection:
         self.heartbeat_at: Optional[str] = None
         self.summary: Optional[str] = None
         self.roles: Dict[str, str] = {}   # agent_id -> role snapshot (W4)
+        self.done_at: Optional[str] = None
+        self.archived: bool = False
 
     def apply(self, ev: Dict[str, Any]) -> None:
         typ = ev.get("type", "")
@@ -59,6 +61,9 @@ class TaskProjection:
             self.artifacts.append({"url": payload.get("url"), "kind": payload.get("kind")})
         elif typ == "done":
             self.summary = payload.get("summary", "")
+            self.done_at = self.last_event_at
+            if payload.get("archived"):
+                self.archived = True
         elif typ == "heartbeat":
             self.heartbeat_at = self.last_event_at
         # W4: snapshot role for the agent at event time (role stored in payload)
@@ -101,6 +106,8 @@ class TaskProjection:
             "last_event_at": self.last_event_at,
             "summary": self.summary,
             "roles": self.roles,
+            "done_at": self.done_at,
+            "archived": self.archived,
         }
 
 
@@ -125,6 +132,8 @@ def derive_board(events: List[Dict[str, Any]], project: Optional[str] = None) ->
         d = proj.to_dict()
         if project and (d.get("project") or "") != project:
             continue
+        if d.get("archived"):
+            continue  # archived demos/cleanup stay out of the pulse
         st = d["status"]
         if st == "done":
             board["done_today"].append(d)
