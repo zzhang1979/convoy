@@ -75,7 +75,7 @@ def test_w1_drill_down_kv_and_story(convoy_client):
     for key, val in [("wip_context", {"done": ["a"], "next": ["b"]}),
                      ("user_story", {"as_a": "commander", "i_want": "drill down",
                                      "so_that": "I track work", "acceptance": ["see events"]})]:
-        r = convoy_client.put(f"/api/kv/task:DD-1/{key}", json={"value": val}, headers=_auth(sec))
+        r = convoy_client.put(f"/api/kv/task:DD-1/{key}", json={"key": key, "value": val}, headers=_auth(sec))
         assert r.status_code == 200, r.text
 
     r = convoy_client.get("/api/tasks/DD-1", headers=_cmd())

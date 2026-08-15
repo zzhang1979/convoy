@@ -61,9 +61,11 @@ class TaskProjection:
             self.summary = payload.get("summary", "")
         elif typ == "heartbeat":
             self.heartbeat_at = self.last_event_at
-        # W4: snapshot role for the agent at event time
-        if ev.get("agent_id") and ev.get("role"):
-            self.roles[ev["agent_id"]] = ev["role"]
+        # W4: snapshot role for the agent at event time (role stored in payload)
+        if ev.get("agent_id"):
+            role = (ev.get("payload") or {}).get("role") or ev.get("role")
+            if role:
+                self.roles[ev["agent_id"]] = role
 
     def status(self, now: Optional[str] = None) -> str:
         """Derive status from facts. Order matters."""
