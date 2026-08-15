@@ -117,6 +117,20 @@ board + costs/full from UI at http://192.168.0.154:8000/.
 **Test-run protocol**: both agents register via SDK, report via events, use KV
 for context, hand off if switching. Anthony watches the board live.
 
+## Feature Wish List (from Anthony, 2026-08-14)
+
+**Document is king.** Full details + tracking in **[docs/features-wishlist.md](docs/features-wishlist.md)**.
+IDs referenced in commits/bugs/sprints.
+
+| ID | Feature | Pri | Status |
+|----|---------|-----|--------|
+| W1 | Work-item drill-down (granular detail per task) | P1 | wish |
+| W2 | Work items grouped by project | P1 | wish |
+| W3 | Artifact documentation search (FTS5) | P1 | wish |
+| W4 | Role + agent attribution on work items | P2 | wish |
+| W5 | Task relationships (hyperlinks for review) | P2 | wish |
+| W6 | User stories as first-class artifacts | P1 | wish |
+
 ## Definition of Ready (story is ready when)
 
 - Acceptance criteria written · owner assigned · dependencies known.
