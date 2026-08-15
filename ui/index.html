@@ -126,14 +126,24 @@ function roleChip(role) {
 }
 
 function taskRow(t, cls) {
+  const age = t.last_event_at ? timeAgo(t.last_event_at) : '';
   return `<div class="task ${cls}" style="cursor:pointer" onclick="drill('${esc(t.task_id)}')">
     <span class="dot" style="background:${t.status==='stuck'?'var(--red)':t.status==='review'?'var(--amber)':t.status==='doing'?'var(--blue)':'var(--green)'}"></span>
     <div style="flex:1">
-      <div>${esc(t.title || t.task_id)}</div>
+      <div>${esc(t.title || t.task_id)} ${age ? `<span class="meta" style="color:var(--text2)">· ${esc(age)} ago</span>` : ''}</div>
       <div class="meta">${esc(t.assignee || 'unassigned')} · ${esc(t.task_id)}${t.project ? ' · <b style="color:var(--gold)">' + esc(t.project) + '</b>' : ''}</div>
       ${t.block_reason ? `<div class="reason">⛔ ${esc(t.block_reason)}</div>` : ''}
     </div>
   </div>`;
+}
+
+function timeAgo(ts) {
+  const t = new Date(ts.replace(' ', 'T') + 'Z');
+  const s = Math.floor((Date.now() - t.getTime()) / 1000);
+  if (s < 5) return 'just now';
+  if (s < 60) return s + 's';
+  if (s < 3600) return Math.floor(s/60) + 'm';
+  return Math.floor(s/3600) + 'h';
 }
 
 let PROJ = '';
@@ -211,8 +221,10 @@ async function refresh() {
     document.getElementById('c-running').textContent = b.running.length;
     document.getElementById('c-stuck').textContent = b.stuck.length;
     document.getElementById('c-done').textContent = b.done_today.length;
-    document.getElementById('agents').innerHTML = (d.agents||[]).map(a =>
-      `<div class="agent" title="${esc(a.agent_id)} · last heartbeat ${esc(a.last_heartbeat || 'never')}"><span class="dot ${a.last_heartbeat ? 'green' : 'red'}"></span>${esc(a.name || a.agent_id)}</div>`).join('');
+    document.getElementById('agents').innerHTML = (d.agents||[]).map(a => {
+      const hb = a.last_heartbeat ? timeAgo(a.last_heartbeat) : 'never';
+      return `<div class="agent" title="${esc(a.agent_id)} · last heartbeat ${esc(hb)}"><span class="dot ${a.last_heartbeat ? 'green' : 'red'}"></span>${esc(a.name || a.agent_id)}<span class="meta" style="color:var(--text2)">${hb === 'never' ? '' : ' · ' + esc(hb) + ' ago'}</span></div>`;
+    }).join('');
     refreshCosts();
   } catch(e) { console.error(e); }
 }
@@ -241,7 +253,7 @@ async function refreshCosts() {
   } catch(e) { /* commander token may not cover costs; skip */ }
 }
 refresh();
-setInterval(refresh, 5000);
+setInterval(refresh, 2000);
 document.getElementById('ts').textContent = new Date().toLocaleTimeString();
 document.getElementById('proj-filter').addEventListener('change', e => {
   PROJ = e.target.value;

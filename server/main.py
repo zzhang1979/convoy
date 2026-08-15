@@ -71,7 +71,10 @@ app.mount("/ui", StaticFiles(directory=str(UI_DIR), html=True), name="ui")
 @app.get("/")
 def index() -> FileResponse:
     """Commander UI at the root."""
-    return FileResponse(UI_DIR / "index.html")
+    resp = FileResponse(UI_DIR / "index.html")
+    resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    resp.headers["Pragma"] = "no-cache"
+    return resp
 
 # Dev-friendly CORS so Jasmine's pulse UI (S1.6) can fetch the API
 # from a different origin during development.
