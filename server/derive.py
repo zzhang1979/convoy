@@ -75,6 +75,9 @@ class TaskProjection:
     def status(self, now: Optional[str] = None) -> str:
         """Derive status from facts. Order matters."""
         now = now or utcnow()
+        # done is terminal: once done, later progress notes don't un-done it
+        if self.done_at is not None:
+            return "done"
         # done iff artifacts exist or done event (latest terminal fact)
         if self.latest_type == "done":
             return "done"
