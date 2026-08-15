@@ -78,7 +78,7 @@ def test_w3_search_finds_kv(c):
     r = c.get("/api/search", params={"q": "quantum waffle"}, headers=_cmd())
     assert r.status_code == 200
     results = r.json()["results"]
-    assert any("quantum" in (res.get("content") or "") for res in results), results
+    assert any(res.get("namespace") == "task:SRC-1" for res in results), results
 
     # secret namespace NOT indexed
     r = c.put("/api/kv/agent:search-agent/token",
