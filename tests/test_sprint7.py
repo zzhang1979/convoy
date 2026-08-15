@@ -107,3 +107,19 @@ def test_done_by_tracked(convoy_client):
     r = convoy_client.get("/api/tasks/WB-1", headers=_cmd())
     assert r.json()["projection"]["done_by"] == "worker-agent"
     assert r.json()["projection"]["status"] == "done"
+
+
+def test_done_clears_blocker(convoy_client):
+    """Done is terminal: a prior blocker must not show on a done task."""
+    d = _reg(convoy_client, "blk-agent", role="engineer")
+    sec = d["secret"]
+    _ev(convoy_client, sec, "b1", "BLK-1", "created", {"title": "Blocked then done"})
+    _ev(convoy_client, sec, "b2", "BLK-1", "blocked_on",
+        {"reason": "no repo access on this host"})
+    _ev(convoy_client, sec, "b3", "BLK-1", "done", {"summary": "finished"})
+    p = convoy_client.get("/api/tasks/BLK-1", headers=_cmd()).json()["projection"]
+    assert p["status"] == "done"
+    assert p["block_reason"] is None
+    # board must not show it in stuck
+    board = convoy_client.get("/api/board", headers=_cmd()).json()["board"]
+    assert all(t["task_id"] != "BLK-1" for t in board["stuck"])

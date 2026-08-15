@@ -143,7 +143,7 @@ function taskRow(t, cls) {
     <div style="flex:1">
       <div>${esc(t.title || t.task_id)} ${age ? `<span class="meta" style="color:var(--text2)">· ${esc(age)} ago</span>` : ''}</div>
       <div class="meta">${esc(t.assignee || 'unassigned')} · ${esc(t.task_id)}${t.project ? ' · <b style="color:var(--gold)">' + esc(t.project) + '</b>' : ''}${doneBy}</div>
-      ${t.block_reason ? `<div class="reason">⛔ ${esc(t.block_reason)}</div>` : ''}
+      ${(t.status !== 'done' && t.block_reason) ? `<div class="reason">⛔ ${esc(t.block_reason)}</div>` : ''}
     </div>
   </div>`;
 }

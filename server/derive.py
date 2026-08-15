@@ -64,6 +64,7 @@ class TaskProjection:
             self.summary = payload.get("summary", "")
             self.done_at = self.last_event_at
             self.done_by = ev.get("agent_id")
+            self.block_reason = None  # done clears any outstanding blocker
             if payload.get("archived"):
                 self.archived = True
         elif typ == "heartbeat":
