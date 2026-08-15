@@ -72,7 +72,13 @@ h1 .dot { color:var(--gold); }
   <select id="proj-filter" style="background:var(--card); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:5px 10px; font-size:12px;">
     <option value="">All projects</option>
   </select>
+  <input id="search-box" placeholder="🔍 search artifacts / docs…" style="background:var(--card); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:5px 10px; font-size:12px; flex:0 0 220px;" onkeydown="if(event.key==='Enter')doSearch()">
+  <button onclick="doSearch()" style="background:var(--gold); color:#000; border:none; border-radius:8px; padding:5px 12px; font-size:12px; cursor:pointer;">Search</button>
   <span style="font-size:11px; color:var(--text2);">click a task to drill in</span>
+</div>
+<div id="search-results" style="display:none; margin-bottom:14px; background:var(--card); border:1px solid var(--border); border-radius:12px; padding:14px;">
+  <div class="costs-head"><h2>Search results</h2><span id="search-close" style="cursor:pointer; color:var(--text2); font-size:12px;">✕</span></div>
+  <div id="search-body" style="font-size:12px; line-height:1.8;"></div>
 </div>
 
 <div id="main" style="display:flex; gap:16px; align-items:flex-start;">
@@ -152,6 +158,27 @@ function timeAgo(ts) {
 
 let PROJ = '';
 
+async function doSearch() {
+  const q = document.getElementById('search-box').value.trim();
+  if (!q) return;
+  try {
+    const r = await fetch('/api/search?q=' + encodeURIComponent(q), {headers: {Authorization: 'Bearer ' + TOKEN}});
+    if (!r.ok) return;
+    const d = await r.json();
+    const body = d.results.map(res => {
+      const ns = res.namespace;
+      const taskId = res.task_id || ns.replace(/^task:/, '');
+      return `<div style="padding:6px 0; border-bottom:1px solid var(--border);">
+        <span style="color:var(--gold); cursor:pointer;" onclick="drill('${esc(taskId)}')">${esc(ns)}/${esc(res.key)}</span>
+        <span class="chip" style="margin-left:6px;">${esc(res.kind)}</span>
+        <div style="color:var(--text2);">${esc(res.content || '')}</div>
+      </div>`;
+    }).join('') || '<div class="empty">No matches</div>';
+    document.getElementById('search-body').innerHTML = `<div style="color:var(--text2); margin-bottom:6px;">${d.results.length} result(s) for <b>"${esc(q)}"</b></div>` + body;
+    document.getElementById('search-results').style.display = 'block';
+  } catch(e) { console.error(e); }
+}
+
 async function drill(taskId) {
   try {
     const r = await fetch('/api/tasks/' + encodeURIComponent(taskId), {headers: {Authorization: 'Bearer ' + TOKEN}});
@@ -170,8 +197,14 @@ async function drill(taskId) {
     }
     html += `<div><b>Project:</b> ${esc(p.project || '—')} · <b>Status:</b> ${esc(p.status)} · <b>Assignee:</b> ${esc(p.assignee || '—')}</div>
       <div><b>Agents & roles:</b> ${roles}</div>
-      <div><b>Artifacts:</b> ${(p.artifacts||[]).map(a => `<a href="${esc(a.url)}" target="_blank" style="color:var(--blue)">${esc(a.url)}</a>`).join(', ') || '—'}</div>
-      <div style="margin-top:12px; font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--text2);">Event timeline</div>`;
+      <div><b>Artifacts:</b> ${(p.artifacts||[]).map(a => `<a href="${esc(a.url)}" target="_blank" style="color:var(--blue)">${esc(a.url)}</a>`).join(', ') || '—'}</div>`;
+    // W5: linked tasks
+    const links = d.links || {outgoing: [], incoming: []};
+    const linkParts = [];
+    links.outgoing.forEach(l => linkParts.push(`<span style="color:var(--gold); cursor:pointer;" onclick="drill('${esc(l.to_task)}')">→ ${esc(l.to_task)} (${esc(l.kind)})</span>`));
+    links.incoming.forEach(l => linkParts.push(`<span style="color:var(--blue); cursor:pointer;" onclick="drill('${esc(l.from_task)}')">← ${esc(l.from_task)} (${esc(l.kind)})</span>`));
+    if (linkParts.length) html += `<div style="margin-top:6px;"><b>Links:</b> ${linkParts.join(' · ')}</div>`;
+    html += `<div style="margin-top:12px; font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--text2);">Event timeline</div>`;
     html += (d.events||[]).map(e => {
       const pl = Object.entries(e.payload||{}).filter(([k]) => !['role','assignee','title','project','note','pct'].includes(k));
       const extra = pl.length ? ' · ' + pl.map(([k,v]) => `${k}=${esc(JSON.stringify(v))}`).join(' ') : '';
@@ -269,6 +302,9 @@ document.getElementById('proj-filter').addEventListener('change', e => {
 });
 document.getElementById('detail-close').addEventListener('click', () => {
   document.getElementById('detail').style.display = 'none';
+});
+document.getElementById('search-close').addEventListener('click', () => {
+  document.getElementById('search-results').style.display = 'none';
 });
 </script>
 </body>

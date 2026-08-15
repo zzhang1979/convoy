@@ -124,14 +124,24 @@ IDs referenced in commits/bugs/sprints.
 
 | ID | Feature | Pri | Status |
 |----|---------|-----|--------|
-| W1 | Work-item drill-down (granular detail per task) | P1 | in-progress (Sprint 7) |
-| W2 | Work items grouped by project | P1 | in-progress (Sprint 7) |
-| W3 | Artifact documentation search (FTS5) | P1 | wish (Sprint 8) |
-| W4 | Role + agent attribution on work items | P2 | in-progress (Sprint 7) |
-| W5 | Task relationships (hyperlinks for review) | P2 | wish (Sprint 8) |
-| W6 | User stories as first-class artifacts | P1 | in-progress (Sprint 7) |
+| W1 | Work-item drill-down (granular detail per task) | P1 | ✅ done (Sprint 7) |
+| W2 | Work items grouped by project | P1 | ✅ done (Sprint 7) |
+| W3 | Artifact documentation search (FTS5) | P1 | ✅ done (Sprint 8) |
+| W4 | Role + agent attribution on work items | P2 | ✅ done (Sprint 7) |
+| W5 | Task relationships (hyperlinks for review) | P2 | ✅ done (Sprint 8) |
+| W6 | User stories as first-class artifacts | P1 | ✅ done (Sprint 7) |
 
-## Sprint 7 — Wish List: Drill-down, Projects, Roles, User Stories 🔄 IN PROGRESS
+## Sprint 8 — Wish List: Search + Task Links ✅ DONE
+
+**Goal**: Ship W3 (FTS5 artifact search) + W5 (task relationships).
+
+| # | Story | Owner | Status | Notes |
+|---|-------|-------|--------|-------|
+| S8.1 | **W3: FTS5 search** — `search_idx` virtual table, `/api/search?q=`, backfill script | Jean | ✅ done | 32 tests passed |
+| S8.2 | **W5: Task links** — `task_links` table, POST/GET `/api/tasks/{id}/links` | Jean | ✅ done | relates_to/blocks/duplicates/parent |
+| S8.3 | **UI** — search box + results panel + link chips in drill-down | Jean | ✅ done | click result → drill |
+
+**Sprint 7 — Wish List: Drill-down, Projects, Roles, User Stories ✅ DONE**
 
 **Goal**: Ship Anthony's wish list items W1/W2/W4/W6 — granular visibility,
 project grouping, role attribution, user-story artifacts.
