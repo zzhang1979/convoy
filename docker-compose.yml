@@ -10,11 +10,32 @@ services:
       - CONVOY_COMMANDER_TOKEN=${CONVOY_COMMANDER_TOKEN:-convoy-cmd-2026}
     volumes:
       - convoy-data:/data
+    # Startup wait + healthcheck polish (S6.2).
+    # The entrypoint blocks until /api/health is live before starting uvicorn;
+    # start_period gives that onboard (install + init_db + seed) a grace window
+    # so slow first boots are not flapped unhealthy. The probe is the same
+    # readiness signal the repo's wait_health() uses.
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
-      interval: 30s
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/api/health"]
+      interval: 10s
       timeout: 5s
       retries: 3
+      start_period: 30s   # startup wait — uvicorn + init_db/seed may take a while on first boot
+      start_interval: 2s
+
+    # depends_on readiness pattern.
+    # convoy is the only long-running service today (sqlite-backed, no separate
+    # DB), so there is nothing to order *against* yet — but when a second
+    # service is added (e.g. an agent/reporter or a future Postgres), gate it on
+    # convoy being healthy so it never races ahead of a cold start:
+    #
+    #   depends_on:
+    #     convoy:
+    #       condition: service_healthy
+    #
+    # The entrypoint wait above already provides the same guarantee for `docker
+    # compose up` / the scheduler by keeping the container in "starting" until
+    # the app answers /api/health.
 
 volumes:
   convoy-data:
