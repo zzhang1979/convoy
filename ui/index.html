@@ -56,6 +56,8 @@ h1 .dot { color:var(--gold); }
 .chip.commander{ background:rgba(248,113,113,.14); color:var(--red); }
 .window { font-variant-numeric:tabular-nums; }
 @media (max-width:900px){
+  #main { flex-direction:column; }
+  #detail { position:static !important; max-height:none !important; }
   .cost-grid { grid-template-columns:1fr 1fr; }
   .cost-grid .h, .cost-grid .c.hide-m { display:none; }
   .cost-grid .total .hide-m { display:none; }
@@ -73,29 +75,31 @@ h1 .dot { color:var(--gold); }
   <span style="font-size:11px; color:var(--text2);">click a task to drill in</span>
 </div>
 
-<div class="bands">
-  <div class="band">
-    <h2>Running <span class="count" id="c-running">0</span></h2>
-    <div id="running"></div>
+<div id="main" style="display:flex; gap:16px; align-items:flex-start;">
+  <div id="list-col" style="flex:1.2; min-width:0;">
+    <div class="bands">
+      <div class="band">
+        <h2>Running <span class="count" id="c-running">0</span></h2>
+        <div id="running"></div>
+      </div>
+      <div class="band stuck">
+        <h2>Stuck <span class="count" id="c-stuck">0</span></h2>
+        <div id="stuck"></div>
+      </div>
+      <div class="band">
+        <h2>Done Today <span class="count" id="c-done">0</span></h2>
+        <div id="done"></div>
+      </div>
+    </div>
+    <div class="agents" id="agents"></div>
   </div>
-  <div class="band stuck">
-    <h2>Stuck <span class="count" id="c-stuck">0</span></h2>
-    <div id="stuck"></div>
+  <div id="detail" style="display:none; flex:0.8; min-width:0; position:sticky; top:12px; background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; max-height:calc(100vh - 24px); overflow-y:auto;">
+    <div class="costs-head">
+      <h2 id="detail-title">Task detail</h2>
+      <span id="detail-close" style="cursor:pointer; color:var(--text2); font-size:12px;">✕ close</span>
+    </div>
+    <div id="detail-body" style="font-size:13px; line-height:1.7;"></div>
   </div>
-  <div class="band">
-    <h2>Done Today <span class="count" id="c-done">0</span></h2>
-    <div id="done"></div>
-  </div>
-</div>
-
-<div class="agents" id="agents"></div>
-
-<div id="detail" style="display:none; margin-top:20px; background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px;">
-  <div class="costs-head">
-    <h2 id="detail-title">Task detail</h2>
-    <span id="detail-close" style="cursor:pointer; color:var(--text2); font-size:12px;">✕ close</span>
-  </div>
-  <div id="detail-body" style="font-size:13px; line-height:1.7;"></div>
 </div>
 
 <div class="costs" id="costs">
@@ -180,6 +184,10 @@ async function drill(taskId) {
     document.getElementById('detail-title').textContent = `${p.title || taskId}`;
     document.getElementById('detail-body').innerHTML = html;
     document.getElementById('detail').style.display = 'block';
+    // narrow screens: bring the detail panel into view
+    if (window.innerWidth <= 900) {
+      document.getElementById('detail').scrollIntoView({behavior: 'smooth', block: 'start'});
+    }
   } catch(e) { console.error(e); }
 }
 
