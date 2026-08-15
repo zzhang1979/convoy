@@ -148,8 +148,13 @@ def append_event(req: EventRequest,
     ``"status": "duplicate"`` and does not create a second row.
     """
     agent_id = _authorize(authorization)
+    # W4: snapshot the agent's current role onto the event for historical accuracy
+    role = models.agent_role(agent_id)
+    payload = dict(req.payload or {})
+    if role:
+        payload.setdefault("role", role)
     inserted = models.append_event(
-        agent_id, req.event_id, req.task_id, req.type, req.payload
+        agent_id, req.event_id, req.task_id, req.type, payload
     )
     if req.type == "heartbeat":
         models.touch_heartbeat(agent_id)
@@ -186,27 +191,43 @@ def _load_events() -> list[dict[str, Any]]:
 
 
 @app.get("/api/board")
-def board(authorization: str | None = Header(None)) -> dict[str, Any]:
-    """Commander pulse: running / stuck / done-today / todo (derived)."""
+def board(project: str = "", authorization: str | None = Header(None)) -> dict[str, Any]:
+    """Commander pulse: running / stuck / done-today / todo (derived).
+
+    Optional ?project=<name> filters the board (W2).
+    """
     _commander(authorization)
     events = _load_events()
-    b = derive_board(events)
+    b = derive_board(events, project or None)
     with models.connect() as conn:
         agents = [
             dict(r) for r in conn.execute(
                 "SELECT agent_id, name, capabilities, last_heartbeat FROM agents"
             ).fetchall()
         ]
-    return {"board": b, "agents": agents}
+    # W2: distinct projects from task projections
+    projects = sorted({p.project for p in derive_tasks(events).values()
+                       if p.project})
+    return {"board": b, "agents": agents, "projects": projects}
 
 
 @app.get("/api/tasks/{task_id}")
 def task_detail(task_id: str, authorization: str | None = Header(None)) -> dict[str, Any]:
-    """Task timeline + derived projection."""
+    """Task timeline + derived projection + KV context + user story (W1/W6)."""
     _commander(authorization)
     events = [e for e in _load_events() if e.get("task_id") == task_id]
     proj = derive_tasks(events).get(task_id)
-    return {"task_id": task_id, "events": events, "projection": proj.to_dict() if proj else None}
+    # W1: KV context for this task
+    kv = models.kv_list_namespace(f"task:{task_id}")
+    # W6: user story artifact
+    story = next((kv[k] for k in kv if k == "user_story"), None)
+    return {
+        "task_id": task_id,
+        "events": events,
+        "projection": proj.to_dict() if proj else None,
+        "kv": kv,
+        "user_story": story,
+    }
 
 
 @app.get("/api/agents")

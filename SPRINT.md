@@ -124,12 +124,25 @@ IDs referenced in commits/bugs/sprints.
 
 | ID | Feature | Pri | Status |
 |----|---------|-----|--------|
-| W1 | Work-item drill-down (granular detail per task) | P1 | wish |
-| W2 | Work items grouped by project | P1 | wish |
-| W3 | Artifact documentation search (FTS5) | P1 | wish |
-| W4 | Role + agent attribution on work items | P2 | wish |
-| W5 | Task relationships (hyperlinks for review) | P2 | wish |
-| W6 | User stories as first-class artifacts | P1 | wish |
+| W1 | Work-item drill-down (granular detail per task) | P1 | in-progress (Sprint 7) |
+| W2 | Work items grouped by project | P1 | in-progress (Sprint 7) |
+| W3 | Artifact documentation search (FTS5) | P1 | wish (Sprint 8) |
+| W4 | Role + agent attribution on work items | P2 | in-progress (Sprint 7) |
+| W5 | Task relationships (hyperlinks for review) | P2 | wish (Sprint 8) |
+| W6 | User stories as first-class artifacts | P1 | in-progress (Sprint 7) |
+
+## Sprint 7 — Wish List: Drill-down, Projects, Roles, User Stories 🔄 IN PROGRESS
+
+**Goal**: Ship Anthony's wish list items W1/W2/W4/W6 — granular visibility,
+project grouping, role attribution, user-story artifacts.
+
+| # | Story | Owner | Status | Notes |
+|---|-------|-------|--------|-------|
+| S7.1 | **W2: Project grouping** — tasks get `project`, board filters by project | Jean | 🔵 assigned | Additive: payload.project |
+| S7.2 | **W6: User-story artifacts** — SOP rule + KV template, shown in detail | Jean | 🔵 assigned | `task:<id>/user_story` |
+| S7.3 | **W1: Task drill-down** — `GET /api/tasks/{id}/timeline` + UI detail view | Jean | 🔵 assigned | events+KV+artifacts |
+| S7.4 | **W4: Role attribution** — snapshot role on events, show in board+detail | Jean | 🔵 assigned | historical accuracy |
+| S7.5 | **Tests + deploy + docs** | Jean | 🔵 assigned | wishlist → done |
 
 ## Definition of Ready (story is ready when)
 

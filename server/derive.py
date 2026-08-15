@@ -30,6 +30,7 @@ class TaskProjection:
         self.task_id = task_id
         self.title = ""
         self.assignee = None
+        self.project = None
         self.created_at: Optional[str] = None
         self.last_event_at: Optional[str] = None
         self.latest_type: Optional[str] = None
@@ -37,6 +38,7 @@ class TaskProjection:
         self.artifacts: List[Dict[str, Any]] = []
         self.heartbeat_at: Optional[str] = None
         self.summary: Optional[str] = None
+        self.roles: Dict[str, str] = {}   # agent_id -> role snapshot (W4)
 
     def apply(self, ev: Dict[str, Any]) -> None:
         typ = ev.get("type", "")
@@ -46,6 +48,7 @@ class TaskProjection:
         if typ == "created":
             self.title = payload.get("title", self.title)
             self.assignee = payload.get("assignee", self.assignee)
+            self.project = payload.get("project", self.project)
             if not self.created_at:
                 self.created_at = self.last_event_at
         elif typ == "blocked_on":
@@ -58,6 +61,9 @@ class TaskProjection:
             self.summary = payload.get("summary", "")
         elif typ == "heartbeat":
             self.heartbeat_at = self.last_event_at
+        # W4: snapshot role for the agent at event time
+        if ev.get("agent_id") and ev.get("role"):
+            self.roles[ev["agent_id"]] = ev["role"]
 
     def status(self, now: Optional[str] = None) -> str:
         """Derive status from facts. Order matters."""
@@ -85,12 +91,14 @@ class TaskProjection:
             "task_id": self.task_id,
             "title": self.title,
             "assignee": self.assignee,
+            "project": self.project,
             "status": self.status(),
             "block_reason": self.block_reason,
             "artifacts": self.artifacts,
             "created_at": self.created_at,
             "last_event_at": self.last_event_at,
             "summary": self.summary,
+            "roles": self.roles,
         }
 
 
@@ -106,13 +114,15 @@ def derive_tasks(events: List[Dict[str, Any]]) -> Dict[str, TaskProjection]:
     return tasks
 
 
-def derive_board(events: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
-    """Pulse board: running / stuck / done-today / todo."""
+def derive_board(events: List[Dict[str, Any]], project: Optional[str] = None) -> Dict[str, List[Dict[str, Any]]]:
+    """Pulse board: running / stuck / done-today / todo. Optionally filter by project (W2)."""
     tasks = derive_tasks(events)
     board = {"running": [], "stuck": [], "done_today": [], "todo": [], "stale": []}
     today_start = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
     for proj in tasks.values():
         d = proj.to_dict()
+        if project and (d.get("project") or "") != project:
+            continue
         st = d["status"]
         if st == "done":
             board["done_today"].append(d)

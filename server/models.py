@@ -212,6 +212,18 @@ def agent_id_for_secret(secret: str) -> str | None:
         conn.close()
 
 
+def agent_role(agent_id: str) -> str | None:
+    """Return the agent's current role from its schedule (W4), or None."""
+    conn = connect()
+    try:
+        row = conn.execute(
+            "SELECT role_name FROM schedules WHERE agent_id = ?", (agent_id,)
+        ).fetchone()
+        return row["role_name"] if row else None
+    finally:
+        conn.close()
+
+
 def touch_heartbeat(agent_id: str, at: str | None = None) -> None:
     """Record the latest heartbeat timestamp for an agent."""
     if at is None:
@@ -311,6 +323,14 @@ def kv_delete(namespace: str, key: str) -> bool:
         conn.close()
 
 
+def kv_list_namespace(namespace: str) -> dict:
+    """KV as {key: value} dict for a namespace (W1 drill-down convenience)."""
+    out: dict = {}
+    for item in kv_list(namespace):
+        out[item["key"]] = item["value"]
+    return out
+
+
 # ---------- SOP rules (S2.3) ----------
 
 DEFAULT_SOP: list[dict] = [
@@ -328,6 +348,8 @@ DEFAULT_SOP: list[dict] = [
      "body": "No side-chat for work state. Decisions, context, and artifacts live in KV + events so any agent can catch up.", "priority": 6},
     {"rule_key": "sop.done", "title": "Done means artifacts exist",
      "body": "A task is done when artifact_published events exist, not when the agent says so.", "priority": 7},
+    {"rule_key": "sop.story", "title": "Every task gets a user story (W6)",
+     "body": "On task creation, write KV task:<id>/user_story as: {as_a, i_want, so_that, acceptance: [...]}. This is the tracking artifact for the project.", "priority": 8},
 ]
 
 
