@@ -288,9 +288,12 @@ def _index_doc(conn, namespace: str, key: str, content: str,
     """Insert/update one document in the FTS index (W3)."""
     try:
         conn.execute(
+            "DELETE FROM search_idx WHERE namespace = ? AND key = ?",
+            (namespace, key),
+        )
+        conn.execute(
             "INSERT INTO search_idx (namespace, key, content, kind, task_id) "
-            "VALUES (?, ?, ?, ?, ?) "
-            "ON CONFLICT(rowid) DO UPDATE SET content = excluded.content",
+            "VALUES (?, ?, ?, ?, ?)",
             (namespace, key, content, kind, task_id),
         )
     except sqlite3.OperationalError:
