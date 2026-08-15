@@ -88,7 +88,7 @@ CREATE INDEX IF NOT EXISTS idx_links_to   ON task_links(to_task);
 
 -- W3: full-text search index over KV values + task notes/artifacts
 CREATE VIRTUAL TABLE IF NOT EXISTS search_idx USING fts5(
-    namespace, key, content, kind, task_id, UNINDEXED='namespace,key,kind,task_id'
+    namespace UNINDEXED, key UNINDEXED, content, kind UNINDEXED, task_id UNINDEXED
 );
 
 CREATE TABLE IF NOT EXISTS roles (
