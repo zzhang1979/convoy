@@ -40,6 +40,7 @@ class TaskProjection:
         self.summary: Optional[str] = None
         self.roles: Dict[str, str] = {}   # agent_id -> role snapshot (W4)
         self.done_at: Optional[str] = None
+        self.done_by: Optional[str] = None
         self.archived: bool = False
 
     def apply(self, ev: Dict[str, Any]) -> None:
@@ -62,6 +63,7 @@ class TaskProjection:
         elif typ == "done":
             self.summary = payload.get("summary", "")
             self.done_at = self.last_event_at
+            self.done_by = ev.get("agent_id")
             if payload.get("archived"):
                 self.archived = True
         elif typ == "heartbeat":
@@ -110,6 +112,7 @@ class TaskProjection:
             "summary": self.summary,
             "roles": self.roles,
             "done_at": self.done_at,
+            "done_by": self.done_by,
             "archived": self.archived,
         }
 

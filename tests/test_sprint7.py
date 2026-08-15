@@ -96,3 +96,14 @@ def test_w2_project_in_projection(convoy_client):
     _ev(convoy_client, d["secret"], "x1", "PR-1", "created", {"title": "X", "project": "alpha"})
     r = convoy_client.get("/api/tasks/PR-1", headers=_cmd())
     assert r.json()["projection"]["project"] == "alpha"
+
+
+def test_done_by_tracked(convoy_client):
+    """Done events record which agent completed the task (evidence trail)."""
+    d = _reg(convoy_client, "worker-agent", role="engineer")
+    sec = d["secret"]
+    _ev(convoy_client, sec, "w1", "WB-1", "created", {"title": "Work"})
+    _ev(convoy_client, sec, "w2", "WB-1", "done", {"summary": "done it"})
+    r = convoy_client.get("/api/tasks/WB-1", headers=_cmd())
+    assert r.json()["projection"]["done_by"] == "worker-agent"
+    assert r.json()["projection"]["status"] == "done"

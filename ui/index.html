@@ -137,11 +137,12 @@ function roleChip(role) {
 
 function taskRow(t, cls) {
   const age = t.last_event_at ? timeAgo(t.last_event_at) : '';
+  const doneBy = t.done_by ? ` · ✅ ${esc(t.done_by)}` : '';
   return `<div class="task ${cls}" style="cursor:pointer" onclick="drill('${esc(t.task_id)}')">
     <span class="dot" style="background:${t.status==='stuck'?'var(--red)':t.status==='review'?'var(--amber)':t.status==='doing'?'var(--blue)':'var(--green)'}"></span>
     <div style="flex:1">
       <div>${esc(t.title || t.task_id)} ${age ? `<span class="meta" style="color:var(--text2)">· ${esc(age)} ago</span>` : ''}</div>
-      <div class="meta">${esc(t.assignee || 'unassigned')} · ${esc(t.task_id)}${t.project ? ' · <b style="color:var(--gold)">' + esc(t.project) + '</b>' : ''}</div>
+      <div class="meta">${esc(t.assignee || 'unassigned')} · ${esc(t.task_id)}${t.project ? ' · <b style="color:var(--gold)">' + esc(t.project) + '</b>' : ''}${doneBy}</div>
       ${t.block_reason ? `<div class="reason">⛔ ${esc(t.block_reason)}</div>` : ''}
     </div>
   </div>`;
@@ -208,9 +209,11 @@ async function drill(taskId) {
     html += (d.events||[]).map(e => {
       const pl = Object.entries(e.payload||{}).filter(([k]) => !['role','assignee','title','project','note','pct'].includes(k));
       const extra = pl.length ? ' · ' + pl.map(([k,v]) => `${k}=${esc(JSON.stringify(v))}`).join(' ') : '';
-      return `<div style="padding:4px 0; border-bottom:1px solid var(--border); display:flex; gap:8px;">
+      const who = e.agent_id ? `<b style="color:var(--blue)">${esc(e.agent_id)}</b>` : '';
+      return `<div style="padding:4px 0; border-bottom:1px solid var(--border); display:flex; gap:8px; flex-wrap:wrap;">
         <span style="color:var(--text2); white-space:nowrap; font-size:11px;">${esc((e.received_at||'').slice(11,19))}</span>
         <span style="color:var(--gold); white-space:nowrap;">${esc(e.type)}</span>
+        <span>${who}</span>
         <span style="color:var(--text2);">${esc((e.payload||{}).note || '')}${extra}</span>
       </div>`;
     }).join('') || '<div class="empty">No events</div>';
