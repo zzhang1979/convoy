@@ -18,9 +18,14 @@ def utcnow() -> str:
 
 def parse_time(s: str) -> datetime:
     try:
-        return datetime.fromisoformat(s)
+        # standardise space to T for isoformat parsing
+        s = s.replace(" ", "T")
+        dt = datetime.fromisoformat(s)
+        if dt.tzinfo is not None:
+            dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
+        return dt
     except (ValueError, TypeError):
-        return datetime.now(timezone.utc)
+        return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 class TaskProjection:
@@ -91,6 +96,16 @@ class TaskProjection:
             return "stuck"
         # doing iff started work (has any event after created) and recent heartbeat
         if self.latest_type and self.latest_type != "created":
+            # 1. Check assignee agent's latest activity/heartbeat if available
+            agent_last_active = getattr(self, "_agent_last_active", None)
+            if self.assignee and agent_last_active and self.assignee in agent_last_active:
+                hb_time = agent_last_active[self.assignee]
+                hb = parse_time(hb_time)
+                if (parse_time(now) - hb).total_seconds() < HEARTBEAT_STALE_SECONDS:
+                    return "doing"
+                return "stale"  # agent went quiet
+            
+            # 2. Fallback to task-specific heartbeat
             if self.heartbeat_at:
                 hb = parse_time(self.heartbeat_at)
                 if (parse_time(now) - hb).total_seconds() < HEARTBEAT_STALE_SECONDS:
@@ -120,6 +135,17 @@ class TaskProjection:
 
 def derive_tasks(events: List[Dict[str, Any]]) -> Dict[str, TaskProjection]:
     """Group events by task_id and replay each task's projection."""
+    # 1. Track the latest active timestamp per agent across all events
+    agent_last_active: Dict[str, str] = {}
+    for ev in events:
+        aid = ev.get("agent_id")
+        if aid:
+            ts = ev.get("received_at") or ev.get("created_at")
+            if ts:
+                if aid not in agent_last_active or ts > agent_last_active[aid]:
+                    agent_last_active[aid] = ts
+
+    # 2. Build task projections
     tasks: Dict[str, TaskProjection] = {}
     for ev in sorted(events, key=lambda e: e.get("received_at") or ""):
         tid = ev.get("task_id")
@@ -127,6 +153,11 @@ def derive_tasks(events: List[Dict[str, Any]]) -> Dict[str, TaskProjection]:
             continue
         proj = tasks.setdefault(tid, TaskProjection(tid))
         proj.apply(ev)
+        
+    # 3. Store agent_last_active mapping on task projections
+    for proj in tasks.values():
+        proj._agent_last_active = agent_last_active
+        
     return tasks
 
 

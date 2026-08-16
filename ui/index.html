@@ -713,6 +713,9 @@ h1 .dot {
         </div>
         <div id="costs-body"></div>
 
+        <h3 style="font-size:12px; text-transform:uppercase; letter-spacing:1px; color:var(--text2); margin-top:30px; margin-bottom:10px;">Token Burn by Agent</h3>
+        <div id="agent-tokens-body" class="models-grid"></div>
+
         <h3 style="font-size:12px; text-transform:uppercase; letter-spacing:1px; color:var(--text2); margin-top:30px; margin-bottom:10px;">Token Burn by LLM Model</h3>
         <div id="models-body" class="models-grid"></div>
       </div>
@@ -829,6 +832,13 @@ async function drill(taskId) {
       html += `<div style="margin-top:8px; padding-top:8px; border-top:1px solid var(--border);"><b>Links:</b> ${linkParts.join(' · ')}</div>`;
     }
     
+    // Commander Mark Done Button
+    if (p.status !== 'done') {
+      html += `<div style="margin-top:12px; padding-top:12px; border-top:1px solid var(--border); display:flex; gap:8px;">
+        <button onclick="markDone('${esc(taskId)}')" style="background:var(--green); color:#fff; border:none; border-radius:6px; padding:6px 12px; font-size:11.5px; font-weight:600; cursor:pointer;">✔ Mark Done</button>
+      </div>`;
+    }
+    
     html += `<div style="margin-top:14px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text2); border-top:1px solid var(--border); padding-top:10px; margin-bottom:6px;">Event timeline</div>`;
     html += (d.events||[]).map(e => {
       const pl = Object.entries(e.payload||{}).filter(([k]) => !['role','assignee','title','project','note','pct'].includes(k));
@@ -850,6 +860,40 @@ async function drill(taskId) {
       document.getElementById('detail').scrollIntoView({behavior: 'smooth', block: 'start'});
     }
   } catch(e) { console.error(e); }
+}
+
+async function markDone(taskId) {
+  const summary = prompt("Enter a completion summary (optional):", "Completed by commander");
+  if (summary === null) return; // user cancelled
+  
+  // Generate random 32-hex string for event_id
+  const eventId = Array.from({length: 32}, () => Math.floor(Math.random() * 16).toString(16)).join('');
+  
+  try {
+    const r = await fetch('/api/events', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + TOKEN
+      },
+      body: JSON.stringify({
+        event_id: eventId,
+        task_id: taskId,
+        type: 'done',
+        payload: { summary: summary }
+      })
+    });
+    if (r.ok) {
+      alert("Task marked done successfully!");
+      refresh();
+      drill(taskId);
+    } else {
+      const err = await r.text();
+      alert("Failed to mark done: " + err);
+    }
+  } catch(e) {
+    alert("Error: " + e.message);
+  }
 }
 
 // Core Data fetching
@@ -907,21 +951,33 @@ function renderPulseTab() {
   const taskRow = (t, cls) => {
     const age = t.last_event_at ? timeAgo(t.last_event_at) : '';
     const doneBy = t.done_by ? ` · ✅ ${esc(t.done_by)}` : '';
-    return `<div class="task ${cls}" onclick="drill('${esc(t.task_id)}')">
-      <span class="dot" style="background:${t.status==='stuck'?'var(--red)':t.status==='review'?'var(--amber)':t.status==='doing'?'var(--blue)':'var(--green)'}"></span>
+    const isStale = t.status === 'stale';
+    const dotColor = t.status === 'stuck' ? 'var(--red)' : 
+                     (t.status === 'review' ? 'var(--amber)' : 
+                     (t.status === 'stale' ? 'var(--amber)' : 
+                     (t.status === 'doing' ? 'var(--blue)' : 'var(--green)')));
+    
+    return `<div class="task ${cls} ${isStale ? 'stale-task' : ''}" onclick="drill('${esc(t.task_id)}')">
+      <span class="dot" style="background:${dotColor}"></span>
       <div style="flex:1">
-        <div style="font-weight:500;">${esc(t.title || t.task_id)} ${age ? `<span class="meta" style="color:var(--text3)">· ${esc(age)} ago</span>` : ''}</div>
+        <div style="font-weight:500;">
+          ${isStale ? '<span style="color:var(--amber); font-weight:700;">⚠️ [STALE] </span>' : ''}
+          ${esc(t.title || t.task_id)} 
+          ${age ? `<span class="meta" style="color:var(--text3)">· ${esc(age)} ago</span>` : ''}
+        </div>
         <div class="meta">${esc(t.assignee || 'unassigned')} · ${esc(t.task_id)}${t.project ? ' · <b style="color:var(--gold)">' + esc(t.project) + '</b>' : ''}${doneBy}</div>
         ${(t.status !== 'done' && t.block_reason) ? `<div class="reason">⛔ ${esc(t.block_reason)}</div>` : ''}
+        ${isStale ? `<div class="reason" style="color:var(--amber); border-color:rgba(226, 183, 85, 0.2); background:rgba(226, 183, 85, 0.05); margin-top:4px;">⚠️ Agent quiet (no heartbeat)</div>` : ''}
       </div>
     </div>`;
   };
 
-  document.getElementById('running').innerHTML = b.running.length ? b.running.map(t=>taskRow(t,'running')).join('') : '<div class="empty">Nothing running</div>';
+  const runningTasks = [...b.running, ...(b.stale || [])];
+  document.getElementById('running').innerHTML = runningTasks.length ? runningTasks.map(t=>taskRow(t,'running')).join('') : '<div class="empty">Nothing running</div>';
   document.getElementById('stuck').innerHTML = b.stuck.length ? b.stuck.map(t=>taskRow(t,'stuck')).join('') : '<div class="empty">No blockers 🎉</div>';
   document.getElementById('done').innerHTML = b.done_today.length ? b.done_today.map(t=>taskRow(t,'done')).join('') : '<div class="empty">Nothing done today</div>';
   
-  document.getElementById('c-running').textContent = b.running.length;
+  document.getElementById('c-running').textContent = runningTasks.length;
   document.getElementById('c-stuck').textContent = b.stuck.length;
   document.getElementById('c-done').textContent = b.done_today.length;
 
@@ -1183,6 +1239,30 @@ function renderAnalyticsTab() {
   </div>`;
   
   document.getElementById('costs-body').innerHTML = rows;
+
+  // Build agent token burn cards
+  const agentTokensHtml = (d.per_agent || []).map(a => {
+    const totalTokens = (a.tokens_in || 0) + (a.tokens_out || 0);
+    if (totalTokens === 0) return '';
+    const grandTotalTokens = (u.tokens_in || 0) + (u.tokens_out || 0);
+    const agentPct = grandTotalTokens > 0 ? Math.round((totalTokens / grandTotalTokens) * 100) : 0;
+    const inPct = Math.round((a.tokens_in / totalTokens) * 100) || 50;
+    return `<div class="model-card">
+      <div class="model-name">
+        <span>👤 ${esc(a.name || a.agent_id)} ${roleChip(a.role)}</span>
+        <b style="color:var(--gold);">$${fmt(a.token_cost)}</b>
+      </div>
+      <div class="progress-container" style="height:4px;" title="Token Split: ${inPct}% Prompt Input / ${100-inPct}% Completion Output">
+        <div class="progress-fill" style="width: ${inPct}%; background: linear-gradient(90deg, var(--blue), var(--amber));"></div>
+      </div>
+      <div class="model-detail">
+        <span>Tokens: <b>${fmtk(totalTokens)}</b> (${agentPct}%)</span>
+        <span>Prompt/Comp: <b>${fmtk(a.tokens_in)}/${fmtk(a.tokens_out)}</b></span>
+      </div>
+    </div>`;
+  }).join('') || '<div class="empty">No agent token burn recorded yet</div>';
+  
+  document.getElementById('agent-tokens-body').innerHTML = agentTokensHtml;
 
   // Build model analytics
   const modelBreakdown = {};
