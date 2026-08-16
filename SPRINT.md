@@ -110,7 +110,7 @@ board + costs/full from UI at http://192.168.0.154:8000/.
 | # | Story | Owner | Status | Notes |
 |---|-------|-------|--------|-------|
 | S6.1 | **README quickstart** — clone, run server, join agent, see board | Jasmine | ✅ done | Rewrote quickstart (venv, SDK join/report, Docker alt); added missing `requests` dep |
-| S6.2 | **Docker healthcheck polish** — compose `depends_on` + startup wait | Michelle | 🔵 assigned | Test run story |
+| S6.2 | **Docker healthcheck polish** — compose `depends_on` + startup wait | Michelle/Antigravity | ✅ done | Fixed deadlock: run server in background during health checks |
 | S6.3 | **Multi-host agent proof** — one agent reports from a non-.154 host | Michelle | 🔵 assigned | OpenClaw already done; do Hermes |
 | S6.4 | **UI polish** — cost panel styling per Jasmine's design taste | Jasmine | ✅ done | Cost grid: role chips, tabular nums, totals row, mobile collapse, XSS-safe render |
 
@@ -154,7 +154,7 @@ project grouping, role attribution, user-story artifacts.
 | S7.4 | **W4: Role attribution** — snapshot role on events, show in board+detail | Jean | ✅ done | historical accuracy |
 | S7.5 | **Tests + deploy + docs** | Jean | ✅ done | 29 passed |
 
-## Sprint 9 — OpenClaw Containers + Token Hygiene + Agent Permissions 🚀 PLAN
+## Sprint 9 — OpenClaw Containers + Token Hygiene + Agent Permissions 🔄 IN PROGRESS
 
 **Goal**: Bring the Dockerized Henry instances back into the loop, fix the
 multi-bot token conflict, and close the agent-permission gap Henry flagged.
@@ -162,9 +162,9 @@ multi-bot token conflict, and close the agent-permission gap Henry flagged.
 | # | Story | Owner | Status | Notes |
 |---|-------|-------|--------|-------|
 | S9.1 | **Henry containers health** — diagnose henry2-fresh/henry3 unhealthy, TG poller conflict (shared bot token) | Jasmine | 🔵 planned | each container needs its OWN bot token or webhook mode |
-| S9.2 | **Agent read-only view** — agents can GET /api/board + /api/tasks/{id} with their own token (Henry hit 403) | Jean | 🔵 planned | read-scoped auth, no write escalation |
+| S9.2 | **Agent read-only view** — agents can GET /api/board + /api/tasks/{id} with their own token (Henry hit 403) | Jean/Antigravity | ✅ done | read-scoped auth, no write escalation |
 | S9.3 | **Henry SDK rebuild** — re-save convoy_sdk.py + token into henry1 container (lost on containerization) | Jasmine/Henry | 🔵 planned | verify heartbeat + event send from container |
-| S9.4 | **New agent onboarding doc** — antigravity/QA agent join via OpenAI Agents SDK (R-1 pilot) | Jean | 🔵 planned | handoff-in, event-out to Convoy |
+| S9.4 | **New agent onboarding doc** — antigravity/QA agent join via OpenAI Agents SDK (R-1 pilot) | Jean/Antigravity | ✅ done | Pilot agent implemented at agent/qa_agent_pilot.py and doc at docs/antigravity-qa-onboarding.md |
 
 ## Sprint 10 — QA Pilot + Observability + Hardening 🚀 PLAN
 

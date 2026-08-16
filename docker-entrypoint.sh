@@ -1,31 +1,55 @@
 #!/bin/sh
 # Convoy startup-wait entrypoint (S6.2 docker healthcheck polish).
 #
-# `docker compose up` marks the container ready only after the app is actually
-# serving /api/health (the same readiness probe the repo's own wait_health()
-# and the compose healthcheck use). This is the "startup wait": uvicorn +
-# lifespan init_db/seed must finish before we declare the node up, so a slow
-# first boot never flaps the healthcheck or races into failure.
-#
-# Compose healthcheck runs in parallel; start_period in docker-compose.yml
-# gives this wait a grace window before retries count against the container.
+# Fix deadlock: we run uvicorn in the background first, then block/wait
+# until /api/health is live before completing the entrypoint step by
+# waiting on the uvicorn process PID in the foreground.
 set -eu
 
 URL="${CONVOY_HEALTH_URL:-http://localhost:8000/api/health}"
 TIMEOUT="${CONVOY_STARTUP_TIMEOUT:-60}"
 INTERVAL="${CONVOY_STARTUP_INTERVAL:-1}"
 
-echo "[convoy] waiting for $URL (timeout=${TIMEOUT}s) ..."
+# Start the uvicorn server in the background
+echo "[convoy] starting server in background: $@"
+"$@" &
+PID=$!
+
+echo "[convoy] waiting for $URL to become healthy (timeout=${TIMEOUT}s) ..."
+
+# Set up signal trapping to clean up the background process if container stops
+cleanup() {
+    echo "[convoy] shutting down background server (PID=$PID)..."
+    kill -TERM "$PID" 2>/dev/null || true
+    wait "$PID" 2>/dev/null || true
+}
+trap cleanup TERM INT
 
 elapsed=0
+healthy=0
 while [ "$elapsed" -lt "$TIMEOUT" ]; do
+    # Check if background process has died
+    if ! kill -0 "$PID" 2>/dev/null; then
+        echo "[convoy] ERROR: server process died early" >&2
+        wait "$PID" || true
+        exit 1
+    fi
+
     if curl -fsS "$URL" >/dev/null 2>&1; then
-        echo "[convoy] ready in ${elapsed}s — starting server"
-        exec "$@"
+        echo "[convoy] ready in ${elapsed}s — server is healthy"
+        healthy=1
+        break
     fi
     sleep "$INTERVAL"
     elapsed=$((elapsed + INTERVAL))
 done
 
-echo "[convoy] ERROR: app did not become healthy within ${TIMEOUT}s" >&2
-exit 1
+if [ "$healthy" -eq 1 ]; then
+    # Bring background process to foreground
+    wait "$PID"
+else
+    echo "[convoy] ERROR: app did not become healthy within ${TIMEOUT}s" >&2
+    kill -TERM "$PID" 2>/dev/null || true
+    exit 1
+fi
+

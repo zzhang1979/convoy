@@ -97,6 +97,29 @@ def _authorize(authorization: Optional[str]) -> str:
     return agent_id
 
 
+def _authorize_read(authorization: Optional[str]) -> str:
+    """Validate token: returns 'commander' or agent_id, or raises 401/403.
+
+    Allows either a valid agent bearer secret or the commander token.
+    """
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "missing bearer token")
+    token = authorization.removeprefix("Bearer ").strip()
+
+    # Try commander first
+    expected = os.environ.get("CONVOY_COMMANDER_TOKEN", "commander-secret")
+    if token == expected:
+        return "commander"
+
+    # Try agent
+    agent_id = models.agent_id_for_secret(token)
+    if agent_id is not None:
+        return agent_id
+
+    raise HTTPException(status.HTTP_403_FORBIDDEN, "valid agent or commander token required")
+
+
+
 @app.get("/api/health")
 def health() -> dict[str, Any]:
     """Liveness probe (open)."""
@@ -199,7 +222,7 @@ def board(project: str = "", authorization: str | None = Header(None)) -> dict[s
 
     Optional ?project=<name> filters the board (W2).
     """
-    _commander(authorization)
+    _authorize_read(authorization)
     events = _load_events()
     b = derive_board(events, project or None)
     with models.connect() as conn:
@@ -217,7 +240,7 @@ def board(project: str = "", authorization: str | None = Header(None)) -> dict[s
 @app.get("/api/tasks/{task_id}")
 def task_detail(task_id: str, authorization: str | None = Header(None)) -> dict[str, Any]:
     """Task timeline + derived projection + KV context + user story (W1/W6)."""
-    _commander(authorization)
+    _authorize_read(authorization)
     events = [e for e in _load_events() if e.get("task_id") == task_id]
     proj = derive_tasks(events).get(task_id)
     # W1: KV context for this task
@@ -237,7 +260,7 @@ def task_detail(task_id: str, authorization: str | None = Header(None)) -> dict[
 @app.get("/api/tasks/{task_id}/links")
 def task_links_get(task_id: str, authorization: str | None = Header(None)) -> dict[str, Any]:
     """Task relationships (W5)."""
-    _commander(authorization)
+    _authorize_read(authorization)
     return {"task_id": task_id, **models.links_for(task_id)}
 
 
@@ -259,7 +282,7 @@ def task_links_post(task_id: str, body: LinkRequest,
 @app.get("/api/search")
 def search(q: str = "", authorization: str | None = Header(None)) -> dict[str, Any]:
     """Full-text search over KV docs + artifacts (W3)."""
-    _commander(authorization)
+    _authorize_read(authorization)
     if not q.strip():
         return {"query": q, "results": []}
     results = models.search(q.strip())

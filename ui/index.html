@@ -3,126 +3,734 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Convoy — Commander Pulse</title>
+<title>Convoy — Agent Team Portal</title>
 <style>
-:root {
-  --bg: #0a0e14; --card: rgba(17,24,39,0.72); --gold: #D4A84B;
-  --text: #f1f5f9; --text2: #94a3b8; --border: rgba(148,163,184,0.12);
-  --green: #34d399; --red: #f87171; --amber: #fbbf24; --blue: #38bdf8;
-  --purple: #a78bfa; --zero: rgba(148,163,184,0.45);
-}
-* { margin:0; padding:0; box-sizing:border-box; }
-body { background:var(--bg); color:var(--text); font-family:Inter,system-ui,sans-serif; padding:24px; }
-h1 { font-size:22px; font-weight:700; letter-spacing:-0.5px; margin-bottom:4px; }
-h1 .dot { color:var(--gold); }
-.sub { color:var(--text2); font-size:13px; margin-bottom:20px; }
-.bands { display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; }
-@media (max-width:800px){ .bands{grid-template-columns:1fr;} }
-.band { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; }
-.band h2 { font-size:13px; text-transform:uppercase; letter-spacing:1.5px; color:var(--text2); margin-bottom:12px; display:flex; justify-content:space-between; }
-.band h2 .count { background:rgba(212,168,75,0.15); color:var(--gold); border-radius:20px; padding:1px 8px; font-size:11px; }
-.task { display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--border); font-size:13px; }
-.task:last-child { border-bottom:none; }
-.task .dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
-.task .meta { color:var(--text2); font-size:11px; margin-top:2px; }
-.task .reason { color:var(--amber); font-size:11px; margin-top:2px; }
-.empty { color:var(--text2); font-size:12px; text-align:center; padding:20px 0; }
-.stuck { border-left:3px solid var(--red); }
-.running { border-left:3px solid var(--blue); }
-.review { border-left:3px solid var(--amber); }
-.done { border-left:3px solid var(--green); }
-.agents { margin-top:20px; display:flex; gap:10px; flex-wrap:wrap; }
-.agent { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:6px 12px; font-size:12px; display:flex; align-items:center; gap:6px; }
-.agent .dot { width:6px; height:6px; border-radius:50%; }
-.agent .green { background:var(--green); } .agent .red { background:var(--red); }
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
 
-/* ── Costs & Usage panel ─────────────────────────────────────── */
-.costs { display:none; margin-top:20px; background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; }
-.costs-head { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:12px; flex-wrap:wrap; gap:6px; }
-.costs-head h2 { font-size:13px; text-transform:uppercase; letter-spacing:1.5px; color:var(--text2); }
-.costs-head .summary { font-size:11px; color:var(--text2); }
-.cost-grid { display:grid; grid-template-columns:2fr 1.1fr 1.3fr .7fr .6fr .75fr .9fr .8fr .8fr; gap:6px 14px; align-items:center; font-size:12px; }
-.cost-grid .h { font-size:10px; text-transform:uppercase; letter-spacing:1px; color:var(--text2); border-bottom:1px solid var(--border); padding-bottom:6px; }
-.cost-grid .c { padding:7px 0; border-bottom:1px solid var(--border); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.cost-grid .num { text-align:right; font-variant-numeric:tabular-nums; }
-.cost-grid .row-0 .c { color:var(--zero); }                 /* no usage yet → dimmed */
-.cost-grid .total { border-bottom:none; padding-top:10px; font-weight:700; font-size:12.5px; }
-.cost-grid .total.grand { border-top:1px solid var(--border); padding-top:10px; font-size:13.5px; color:var(--gold); }
-.chip { display:inline-block; padding:1px 8px; border-radius:20px; font-size:10px; letter-spacing:.4px; text-transform:uppercase; background:rgba(148,163,184,.12); color:var(--text2); }
-.chip.engineer { background:rgba(56,189,248,.14); color:var(--blue); }
-.chip.designer { background:rgba(212,168,75,.16); color:var(--gold); }
-.chip.qa       { background:rgba(52,211,153,.14); color:var(--green); }
-.chip.analyst  { background:rgba(167,139,250,.15); color:var(--purple); }
-.chip.commander{ background:rgba(248,113,113,.14); color:var(--red); }
-.window { font-variant-numeric:tabular-nums; }
-@media (max-width:900px){
-  #main { flex-direction:column; }
-  #detail { position:static !important; max-height:none !important; }
-  .cost-grid { grid-template-columns:1fr 1fr; }
-  .cost-grid .h, .cost-grid .c.hide-m { display:none; }
-  .cost-grid .total .hide-m { display:none; }
+:root {
+  --bg: #070a13;
+  --card: rgba(15, 23, 42, 0.65);
+  --card-hover: rgba(23, 37, 84, 0.45);
+  --gold: #e2b755;
+  --gold-glow: rgba(226, 183, 85, 0.15);
+  --text: #f8fafc;
+  --text2: #94a3b8;
+  --text3: #64748b;
+  --border: rgba(148, 163, 184, 0.08);
+  --border-focus: rgba(226, 183, 85, 0.35);
+  --green: #10b981;
+  --green-glow: rgba(16, 185, 129, 0.18);
+  --red: #ef4444;
+  --red-glow: rgba(239, 68, 68, 0.18);
+  --amber: #f59e0b;
+  --amber-glow: rgba(245, 158, 11, 0.18);
+  --blue: #0ea5e9;
+  --blue-glow: rgba(14, 165, 233, 0.18);
+  --purple: #8b5cf6;
+  --purple-glow: rgba(139, 92, 246, 0.18);
+  --zero: rgba(148, 163, 184, 0.3);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background: radial-gradient(circle at 50% 0%, #111827 0%, #070a13 70%);
+  color: var(--text);
+  font-family: 'Outfit', Inter, system-ui, sans-serif;
+  padding: 30px;
+  min-height: 100vh;
+}
+
+/* Header & Typography */
+header {
+  margin-bottom: 24px;
+}
+h1 {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+h1 .dot {
+  color: var(--gold);
+  text-shadow: 0 0 10px var(--gold-glow);
+}
+.sub {
+  color: var(--text2);
+  font-size: 13px;
+  margin-top: 4px;
+}
+
+/* Navigation Tabs */
+.nav-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 8px;
+  flex-wrap: wrap;
+}
+.nav-tab {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text2);
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.2s ease-in-out;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.nav-tab:hover {
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text);
+}
+.nav-tab.active {
+  background: var(--gold-glow);
+  color: var(--gold);
+  border-color: rgba(226, 183, 85, 0.25);
+  font-weight: 600;
+  box-shadow: 0 0 12px rgba(226, 183, 85, 0.05);
+}
+
+/* Glassmorphic Panels */
+.panel {
+  background: var(--card);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+/* Search Bar & Filters */
+.filters-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.filters-row select, .filters-row input {
+  background: rgba(30, 41, 59, 0.5);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 12.5px;
+  outline: none;
+  font-family: inherit;
+  transition: border-color 0.2s;
+}
+.filters-row select:focus, .filters-row input:focus {
+  border-color: var(--border-focus);
+}
+.filters-row button {
+  background: var(--gold);
+  color: #0c0f17;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 16px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.1s;
+}
+.filters-row button:hover {
+  opacity: 0.9;
+}
+.filters-row button:active {
+  transform: scale(0.98);
+}
+
+/* Boards Layout */
+.bands {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 16px;
+}
+@media (max-width: 900px) {
+  .bands { grid-template-columns: 1fr; }
+  #main { flex-direction: column; }
+  #detail { position: static !important; max-height: none !important; }
+}
+
+.band {
+  background: rgba(15, 23, 42, 0.35);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  min-height: 200px;
+}
+.band h2 {
+  font-size: 12.5px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--text2);
+  margin-bottom: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.band h2 .count {
+  background: rgba(226, 183, 85, 0.12);
+  color: var(--gold);
+  border-radius: 20px;
+  padding: 2px 8px;
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+/* Task Rows */
+.task {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.01);
+  border: 1px solid var(--border);
+  margin-bottom: 8px;
+  font-size: 13px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+.task:hover {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.1);
+  transform: translateY(-1px);
+}
+.task .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-top: 5px;
+  flex-shrink: 0;
+}
+.task .meta {
+  color: var(--text2);
+  font-size: 11px;
+  margin-top: 4px;
+}
+.task .reason {
+  color: var(--amber);
+  font-size: 11px;
+  margin-top: 4px;
+  background: rgba(245, 158, 11, 0.06);
+  padding: 2px 6px;
+  border-radius: 4px;
+  display: inline-block;
+}
+.task.stuck { border-left: 3px solid var(--red); }
+.task.running { border-left: 3px solid var(--blue); }
+.task.review { border-left: 3px solid var(--amber); }
+.task.done { border-left: 3px solid var(--green); }
+
+.empty {
+  color: var(--text3);
+  font-size: 12px;
+  text-align: center;
+  padding: 30px 0;
+  font-style: italic;
+}
+
+/* Active Roster List */
+.agents-strip {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+.agents-strip h3 {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text2);
+  margin-bottom: 12px;
+}
+.agents {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.agent-chip {
+  background: rgba(30, 41, 59, 0.45);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.agent-chip .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+.agent-chip .dot.green { background: var(--green); box-shadow: 0 0 6px var(--green); }
+.agent-chip .dot.red { background: var(--red); }
+.agent-chip .dot.amber { background: var(--amber); box-shadow: 0 0 6px var(--amber); }
+
+/* Details Side Panel */
+#detail {
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--border);
+  background: rgba(15, 23, 42, 0.85);
+  box-shadow: -8px 0 32px rgba(0, 0, 0, 0.4);
+}
+
+/* Search Panel */
+#search-results {
+  background: rgba(30, 41, 59, 0.8);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+/* Projects Tab */
+.projects-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+.project-card {
+  background: rgba(15, 23, 42, 0.35);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px;
+  transition: all 0.25s ease;
+}
+.project-card:hover {
+  border-color: rgba(226, 183, 85, 0.2);
+  background: rgba(15, 23, 42, 0.45);
+}
+.project-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.project-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--gold);
+}
+.project-metrics {
+  font-size: 11.5px;
+  color: var(--text2);
+}
+.progress-container {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  height: 6px;
+  width: 100%;
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+.progress-fill {
+  background: linear-gradient(90deg, var(--blue), var(--green));
+  height: 100%;
+  border-radius: 6px;
+  transition: width 0.4s ease;
+}
+.project-counts {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.project-pill {
+  font-size: 10.5px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+  color: var(--text2);
+}
+.project-pill.running { border-color: rgba(14, 165, 233, 0.25); color: var(--blue); }
+.project-pill.stuck { border-color: rgba(239, 68, 68, 0.25); color: var(--red); }
+.project-pill.review { border-color: rgba(245, 158, 11, 0.25); color: var(--amber); }
+.project-pill.done { border-color: rgba(16, 185, 129, 0.25); color: var(--green); }
+
+.project-tasks {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+}
+.project-task-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.01);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 12.5px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.project-task-row:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+/* Agent Grid */
+.agents-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: 16px;
+}
+.agent-card {
+  background: rgba(15, 23, 42, 0.35);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  transition: all 0.25s ease;
+}
+.agent-card:hover {
+  border-color: rgba(14, 165, 233, 0.25);
+  background: rgba(15, 23, 42, 0.45);
+}
+.agent-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+.agent-card-name {
+  font-size: 15px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.status-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 9.5px;
+  text-transform: uppercase;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+}
+.status-indicator.online { background: var(--green-glow); color: var(--green); border: 1px solid rgba(16, 185, 129, 0.2); }
+.status-indicator.offline { background: var(--red-glow); color: var(--red); border: 1px solid rgba(239, 68, 68, 0.2); }
+.status-indicator.idle { background: var(--amber-glow); color: var(--amber); border: 1px solid rgba(245, 158, 11, 0.2); }
+
+.agent-card-tz {
+  font-size: 9.5px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-weight: 600;
+  margin-left: 6px;
+}
+.agent-card-tz.active { background: var(--green-glow); color: var(--green); }
+.agent-card-tz.off { background: var(--purple-glow); color: var(--purple); }
+
+.agent-stats-block {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 12px 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 0;
+}
+.agent-stat-item {
+  font-size: 12px;
+}
+.agent-stat-item span {
+  display: block;
+  font-size: 10px;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.agent-timeline {
+  margin-top: 10px;
+}
+.agent-timeline-title {
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text3);
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+.agent-timeline-item {
+  font-size: 11px;
+  color: var(--text2);
+  margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Analytics & Costs Grid */
+.stat-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.stat-card {
+  background: rgba(15, 23, 42, 0.35);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  text-align: center;
+}
+.stat-card .val {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--gold);
+  margin-top: 4px;
+}
+.stat-card .label {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text2);
+}
+
+.costs {
+  background: rgba(15, 23, 42, 0.35);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px;
+  margin-top: 16px;
+}
+.cost-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr 1.2fr 1fr 1.2fr;
+  gap: 6px 14px;
+  align-items: center;
+  font-size: 12.5px;
+}
+.cost-grid .h {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text2);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 8px;
+}
+.cost-grid .c {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cost-grid .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.cost-grid .row-0 .c {
+  color: var(--zero);
+}
+.cost-grid .total {
+  border-bottom: none;
+  padding-top: 12px;
+  font-weight: 700;
+}
+.cost-grid .total.grand {
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+  font-size: 14px;
+  color: var(--gold);
+}
+
+.chip {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 9.5px;
+  letter-spacing: .4px;
+  text-transform: uppercase;
+  background: rgba(148, 163, 184, .1);
+  color: var(--text2);
+  font-weight: 600;
+}
+.chip.engineer { background: rgba(14, 165, 233, .12); color: var(--blue); }
+.chip.designer { background: rgba(226, 183, 85, .12); color: var(--gold); }
+.chip.qa       { background: rgba(16, 185, 129, .12); color: var(--green); }
+.chip.analyst  { background: rgba(139, 92, 246, .12); color: var(--purple); }
+.chip.commander{ background: rgba(239, 68, 68, .12); color: var(--red); }
+
+/* Model usage breakdown cards */
+.models-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+  margin-top: 20px;
+}
+.model-card {
+  background: rgba(15, 23, 42, 0.4);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+}
+.model-name {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+}
+.model-detail {
+  font-size: 11.5px;
+  color: var(--text2);
+  margin-top: 4px;
+  display: flex;
+  justify-content: space-between;
+}
+
+@media (max-width: 950px) {
+  .cost-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .cost-grid .h, .cost-grid .c.hide-m { display: none; }
+  .cost-grid .total .hide-m { display: none; }
 }
 </style>
 </head>
 <body>
-<h1>Convoy <span class="dot">◈</span> Commander Pulse</h1>
-<div class="sub">Agent team orchestration — derived truth from the event log · <span id="ts"></span> · token: <span id="tok" style="color:var(--gold)">•••</span> · <span style="color:var(--text2)">v0.6 realtime</span></div>
-
-<div style="margin-bottom:14px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-  <select id="proj-filter" style="background:var(--card); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:5px 10px; font-size:12px;">
-    <option value="">All projects</option>
-  </select>
-  <input id="search-box" placeholder="🔍 search artifacts / docs…" style="background:var(--card); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:5px 10px; font-size:12px; flex:0 0 220px;" onkeydown="if(event.key==='Enter')doSearch()">
-  <button onclick="doSearch()" style="background:var(--gold); color:#000; border:none; border-radius:8px; padding:5px 12px; font-size:12px; cursor:pointer;">Search</button>
-  <span style="font-size:11px; color:var(--text2);">click a task to drill in</span>
-</div>
-<div id="search-results" style="display:none; margin-bottom:14px; background:var(--card); border:1px solid var(--border); border-radius:12px; padding:14px;">
-  <div class="costs-head"><h2>Search results</h2><span id="search-close" style="cursor:pointer; color:var(--text2); font-size:12px;">✕</span></div>
-  <div id="search-body" style="font-size:12px; line-height:1.8;"></div>
-</div>
+<header>
+  <h1>Convoy <span class="dot">◈</span> Agent Portal</h1>
+  <div class="sub">Dynamic team orchestration & derived log intelligence · <span id="ts"></span> · token: <span id="tok" style="color:var(--gold)">•••</span></div>
+</header>
 
 <div id="main" style="display:flex; gap:16px; align-items:flex-start;">
   <div id="list-col" style="flex:1.2; min-width:0;">
-    <div class="bands">
-      <div class="band">
-        <h2>Running <span class="count" id="c-running">0</span></h2>
-        <div id="running"></div>
+    <!-- Tabbed Navigation Header -->
+    <nav class="nav-tabs">
+      <button id="tab-btn-pulse" class="nav-tab active" onclick="switchTab('pulse')">◈ Board Pulse</button>
+      <button id="tab-btn-projects" class="nav-tab" onclick="switchTab('projects')">📁 Project Tracking</button>
+      <button id="tab-btn-agents" class="nav-tab" onclick="switchTab('agents')">👥 Agent Teams</button>
+      <button id="tab-btn-analytics" class="nav-tab" onclick="switchTab('analytics')">📊 Token &amp; Costs Analytics</button>
+    </nav>
+
+    <!-- TAB 1: PULSE BOARD -->
+    <div id="pane-pulse" class="tab-pane">
+      <div class="filters-row">
+        <select id="proj-filter" onchange="filterProject(this.value)">
+          <option value="">All projects</option>
+        </select>
+        <input id="search-box" placeholder="🔍 search artifacts / docs…" onkeydown="if(event.key==='Enter')doSearch()">
+        <button onclick="doSearch()">Search</button>
+        <span style="font-size:11px; color:var(--text2); margin-left:auto;">click a task to inspect detail</span>
       </div>
-      <div class="band stuck">
-        <h2>Stuck <span class="count" id="c-stuck">0</span></h2>
-        <div id="stuck"></div>
+
+      <div id="search-results" style="display:none;">
+        <div class="costs-head" style="display:flex; justify-content:space-between; margin-bottom:10px;">
+          <h3 style="font-size:13px;">Search results</h3>
+          <span id="search-close" style="cursor:pointer; color:var(--text2); font-size:12px;">✕</span>
+        </div>
+        <div id="search-body" style="font-size:12px; line-height:1.8;"></div>
       </div>
-      <div class="band">
-        <h2>Done Today <span class="count" id="c-done">0</span></h2>
-        <div id="done"></div>
+
+      <div class="bands">
+        <div class="band">
+          <h2>Running <span class="count" id="c-running">0</span></h2>
+          <div id="running"></div>
+        </div>
+        <div class="band">
+          <h2>Stuck <span class="count" id="c-stuck">0</span></h2>
+          <div id="stuck"></div>
+        </div>
+        <div class="band">
+          <h2>Done Today <span class="count" id="c-done">0</span></h2>
+          <div id="done"></div>
+        </div>
+      </div>
+
+      <!-- Agent strip at the bottom -->
+      <div class="agents-strip">
+        <h3>Active Roster</h3>
+        <div class="agents" id="agents"></div>
       </div>
     </div>
-    <div class="agents" id="agents"></div>
+
+    <!-- TAB 2: PROJECTS -->
+    <div id="pane-projects" class="tab-pane" style="display:none;">
+      <div class="panel">
+        <h2 style="font-size:15px; margin-bottom:16px; letter-spacing:0.5px;">Active Project Streams</h2>
+        <div id="projects-list" class="projects-grid"></div>
+      </div>
+    </div>
+
+    <!-- TAB 3: AGENTS -->
+    <div id="pane-agents" class="tab-pane" style="display:none;">
+      <div class="panel">
+        <h2 style="font-size:15px; margin-bottom:16px; letter-spacing:0.5px;">Agent Fleet &amp; Activity</h2>
+        <div id="agents-cards" class="agents-grid"></div>
+      </div>
+    </div>
+
+    <!-- TAB 4: ANALYTICS -->
+    <div id="pane-analytics" class="tab-pane" style="display:none;">
+      <div class="panel">
+        <!-- Summary metrics cards -->
+        <div class="stat-cards">
+          <div class="stat-card">
+            <div class="label">Grand Total Cost</div>
+            <div class="val" id="stat-grand-total">$0.00</div>
+          </div>
+          <div class="stat-card">
+            <div class="label">Time Cost</div>
+            <div class="val" id="stat-time-cost">$0.00</div>
+          </div>
+          <div class="stat-card">
+            <div class="label">Token Cost</div>
+            <div class="val" id="stat-token-cost">$0.00</div>
+          </div>
+          <div class="stat-card">
+            <div class="label">Total Tokens</div>
+            <div class="val" id="stat-tokens">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="label">LLM Calls</div>
+            <div class="val" id="stat-calls">0</div>
+          </div>
+        </div>
+
+        <h3 style="font-size:12px; text-transform:uppercase; letter-spacing:1px; color:var(--text2); margin-top:20px; margin-bottom:10px;">Cost Allocation Table</h3>
+        <div class="cost-grid" id="costs-grid-head">
+          <div class="h">Agent</div><div class="h">Role</div><div class="h hide-m">Window</div>
+          <div class="h num">Hours</div><div class="h num">$/h</div><div class="h num">Time $</div>
+          <div class="h num hide-m">Tokens</div><div class="h num hide-m">Tok $</div><div class="h num">Total $</div>
+        </div>
+        <div id="costs-body"></div>
+
+        <h3 style="font-size:12px; text-transform:uppercase; letter-spacing:1px; color:var(--text2); margin-top:30px; margin-bottom:10px;">Token Burn by LLM Model</h3>
+        <div id="models-body" class="models-grid"></div>
+      </div>
+    </div>
   </div>
-  <div id="detail" style="display:none; flex:0.8; min-width:0; position:sticky; top:12px; background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; max-height:calc(100vh - 24px); overflow-y:auto;">
-    <div class="costs-head">
-      <h2 id="detail-title">Task detail</h2>
-      <span id="detail-close" style="cursor:pointer; color:var(--text2); font-size:12px;">✕ close</span>
+
+  <!-- Shared Side detail panel -->
+  <div id="detail" style="display:none; flex:0.8; min-width:0; position:sticky; top:12px; border-radius:16px; padding:20px; max-height:calc(100vh - 44px); overflow-y:auto;">
+    <div class="costs-head" style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:14px; border-bottom:1px solid var(--border); padding-bottom:8px;">
+      <h2 id="detail-title" style="font-size:15px; font-weight:600; color:var(--gold);">Task detail</h2>
+      <span id="detail-close" style="cursor:pointer; color:var(--text2); font-size:11px; text-transform:uppercase; letter-spacing:0.5px;">✕ close</span>
     </div>
     <div id="detail-body" style="font-size:13px; line-height:1.7;"></div>
   </div>
 </div>
 
-<div class="costs" id="costs">
-  <div class="costs-head">
-    <h2>Costs &amp; Usage</h2>
-    <div class="summary" id="costs-summary"></div>
-  </div>
-  <div class="cost-grid" id="costs-grid-head">
-    <div class="h">Agent</div><div class="h">Role</div><div class="h hide-m">Window</div>
-    <div class="h num">Hours</div><div class="h num">$/h</div><div class="h num">Time</div>
-    <div class="h num hide-m">Tokens</div><div class="h num hide-m">Tok $</div><div class="h num">Total</div>
-  </div>
-  <div id="costs-body"></div>
-</div>
-
 <script>
-const TOKEN = localStorage.getItem('convoy-token') || prompt('Commander token:') || '';
+const TOKEN = localStorage.getItem('convoy-token') || prompt('Commander/Agent token:') || '';
 localStorage.setItem('convoy-token', TOKEN);
 document.getElementById('tok').textContent = TOKEN.slice(0, 8) + '…';
 
@@ -130,24 +738,13 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt
 const fmt = n => Number(n || 0).toFixed(2);
 const fmtk = n => Number(n || 0).toLocaleString();
 
-function roleChip(role) {
-  const r = esc(role || 'unassigned');
-  return `<span class="chip ${r.toLowerCase()}">${r}</span>`;
-}
+// Global cache for data binding
+let BOARD_DATA = null;
+let COSTS_DATA = null;
+let PROJ = '';
+let ACTIVE_TAB = 'pulse';
 
-function taskRow(t, cls) {
-  const age = t.last_event_at ? timeAgo(t.last_event_at) : '';
-  const doneBy = t.done_by ? ` · ✅ ${esc(t.done_by)}` : '';
-  return `<div class="task ${cls}" style="cursor:pointer" onclick="drill('${esc(t.task_id)}')">
-    <span class="dot" style="background:${t.status==='stuck'?'var(--red)':t.status==='review'?'var(--amber)':t.status==='doing'?'var(--blue)':'var(--green)'}"></span>
-    <div style="flex:1">
-      <div>${esc(t.title || t.task_id)} ${age ? `<span class="meta" style="color:var(--text2)">· ${esc(age)} ago</span>` : ''}</div>
-      <div class="meta">${esc(t.assignee || 'unassigned')} · ${esc(t.task_id)}${t.project ? ' · <b style="color:var(--gold)">' + esc(t.project) + '</b>' : ''}${doneBy}</div>
-      ${(t.status !== 'done' && t.block_reason) ? `<div class="reason">⛔ ${esc(t.block_reason)}</div>` : ''}
-    </div>
-  </div>`;
-}
-
+// Time calculation
 function timeAgo(ts) {
   const t = new Date(ts.replace(' ', 'T') + 'Z');
   const s = Math.floor((Date.now() - t.getTime()) / 1000);
@@ -157,8 +754,24 @@ function timeAgo(ts) {
   return Math.floor(s/3600) + 'h';
 }
 
-let PROJ = '';
+// Tab Switching
+function switchTab(tabId) {
+  ACTIVE_TAB = tabId;
+  document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-pane').forEach(p => p.style.display = 'none');
+  
+  document.getElementById('tab-btn-' + tabId).classList.add('active');
+  document.getElementById('pane-' + tabId).style.display = 'block';
+  
+  renderCurrentTab();
+}
 
+function filterProject(val) {
+  PROJ = val;
+  refresh();
+}
+
+// Search
 async function doSearch() {
   const q = document.getElementById('search-box').value.trim();
   if (!q) return;
@@ -169,17 +782,18 @@ async function doSearch() {
     const body = d.results.map(res => {
       const ns = res.namespace;
       const taskId = res.task_id || ns.replace(/^task:/, '');
-      return `<div style="padding:6px 0; border-bottom:1px solid var(--border);">
-        <span style="color:var(--gold); cursor:pointer;" onclick="drill('${esc(taskId)}')">${esc(ns)}/${esc(res.key)}</span>
+      return `<div style="padding:8px 0; border-bottom:1px solid var(--border);">
+        <span style="color:var(--gold); cursor:pointer; font-weight:600;" onclick="drill('${esc(taskId)}')">${esc(ns)}/${esc(res.key)}</span>
         <span class="chip" style="margin-left:6px;">${esc(res.kind)}</span>
-        <div style="color:var(--text2);">${esc(res.content || '')}</div>
+        <div style="color:var(--text2); margin-top:2px;">${esc(res.content || '')}</div>
       </div>`;
-    }).join('') || '<div class="empty">No matches</div>';
-    document.getElementById('search-body').innerHTML = `<div style="color:var(--text2); margin-bottom:6px;">${d.results.length} result(s) for <b>"${esc(q)}"</b></div>` + body;
+    }).join('') || '<div class="empty">No matches found</div>';
+    document.getElementById('search-body').innerHTML = `<div style="color:var(--text2); margin-bottom:6px; font-size:11.5px;">${d.results.length} result(s) for <b>"${esc(q)}"</b></div>` + body;
     document.getElementById('search-results').style.display = 'block';
   } catch(e) { console.error(e); }
 }
 
+// Drill in details
 async function drill(taskId) {
   try {
     const r = await fetch('/api/tasks/' + encodeURIComponent(taskId), {headers: {Authorization: 'Bearer ' + TOKEN}});
@@ -189,86 +803,74 @@ async function drill(taskId) {
     const roles = Object.entries(p.roles || {}).map(([a, r]) => `${esc(a)} (${esc(r)})`).join(', ') || '—';
     const story = d.user_story;
     let html = '';
+    
     if (story) {
-      html += `<div style="background:rgba(212,168,75,.08); border:1px solid rgba(212,168,75,.25); border-radius:8px; padding:10px; margin-bottom:12px;">
-        <div style="color:var(--gold); font-size:11px; text-transform:uppercase; letter-spacing:1px; margin-bottom:4px;">User story</div>
-        <b>As a</b> ${esc(story.as_a)} — <b>I want</b> ${esc(story.i_want)} — <b>so that</b> ${esc(story.so_that)}
-        ${story.acceptance ? `<div style="margin-top:4px; color:var(--text2);"><b>Acceptance:</b> ${story.acceptance.map(esc).join(' · ')}</div>` : ''}
+      html += `<div style="background:rgba(226, 183, 85, .05); border:1px solid rgba(226, 183, 85, .2); border-radius:8px; padding:12px; margin-bottom:12px;">
+        <div style="color:var(--gold); font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px; margin-bottom:4px;">User story</div>
+        <div style="font-size:12px;"><b>As a</b> ${esc(story.as_a)} — <b>I want</b> ${esc(story.i_want)} — <b>so that</b> ${esc(story.so_that)}</div>
+        ${story.acceptance ? `<div style="margin-top:6px; color:var(--text2); font-size:11px;"><b>Acceptance:</b> ${story.acceptance.map(esc).join(' · ')}</div>` : ''}
       </div>`;
     }
-    html += `<div><b>Project:</b> ${esc(p.project || '—')} · <b>Status:</b> ${esc(p.status)} · <b>Assignee:</b> ${esc(p.assignee || '—')}</div>
-      <div><b>Agents & roles:</b> ${roles}</div>
-      <div><b>Artifacts:</b> ${(p.artifacts||[]).map(a => `<a href="${esc(a.url)}" target="_blank" style="color:var(--blue)">${esc(a.url)}</a>`).join(', ') || '—'}</div>`;
-    // W5: linked tasks
+    
+    html += `<div style="margin-bottom:12px; display:grid; grid-template-columns:1fr; gap:6px;">
+      <div><span style="color:var(--text2)">Project:</span> <b>${esc(p.project || '—')}</b></div>
+      <div><span style="color:var(--text2)">Status:</span> <b>${esc(p.status)}</b></div>
+      <div><span style="color:var(--text2)">Assignee:</span> <b>${esc(p.assignee || '—')}</b></div>
+      <div><span style="color:var(--text2)">Attribution:</span> ${roles}</div>
+      <div><span style="color:var(--text2)">Artifacts:</span> ${(p.artifacts||[]).map(a => `<a href="${esc(a.url)}" target="_blank" style="color:var(--blue); text-decoration:none;">🔗 ${esc(a.url.slice(0,35))}...</a>`).join(', ') || '—'}</div>
+    </div>`;
+
+    // Linked tasks (W5)
     const links = d.links || {outgoing: [], incoming: []};
     const linkParts = [];
     links.outgoing.forEach(l => linkParts.push(`<span style="color:var(--gold); cursor:pointer;" onclick="drill('${esc(l.to_task)}')">→ ${esc(l.to_task)} (${esc(l.kind)})</span>`));
     links.incoming.forEach(l => linkParts.push(`<span style="color:var(--blue); cursor:pointer;" onclick="drill('${esc(l.from_task)}')">← ${esc(l.from_task)} (${esc(l.kind)})</span>`));
-    if (linkParts.length) html += `<div style="margin-top:6px;"><b>Links:</b> ${linkParts.join(' · ')}</div>`;
-    html += `<div style="margin-top:12px; font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--text2);">Event timeline</div>`;
+    if (linkParts.length) {
+      html += `<div style="margin-top:8px; padding-top:8px; border-top:1px solid var(--border);"><b>Links:</b> ${linkParts.join(' · ')}</div>`;
+    }
+    
+    html += `<div style="margin-top:14px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text2); border-top:1px solid var(--border); padding-top:10px; margin-bottom:6px;">Event timeline</div>`;
     html += (d.events||[]).map(e => {
       const pl = Object.entries(e.payload||{}).filter(([k]) => !['role','assignee','title','project','note','pct'].includes(k));
       const extra = pl.length ? ' · ' + pl.map(([k,v]) => `${k}=${esc(JSON.stringify(v))}`).join(' ') : '';
       const who = e.agent_id ? `<b style="color:var(--blue)">${esc(e.agent_id)}</b>` : '';
-      return `<div style="padding:4px 0; border-bottom:1px solid var(--border); display:flex; gap:8px; flex-wrap:wrap;">
-        <span style="color:var(--text2); white-space:nowrap; font-size:11px;">${esc((e.received_at||'').slice(11,19))}</span>
-        <span style="color:var(--gold); white-space:nowrap;">${esc(e.type)}</span>
+      return `<div style="padding:6px 0; border-bottom:1px solid var(--border); display:flex; gap:8px; flex-wrap:wrap; font-size:12px;">
+        <span style="color:var(--text3); white-space:nowrap;">${esc((e.received_at||'').slice(11,19))}</span>
+        <span style="color:var(--gold); white-space:nowrap; font-weight:600;">${esc(e.type)}</span>
         <span>${who}</span>
-        <span style="color:var(--text2);">${esc((e.payload||{}).note || '')}${extra}</span>
+        <span style="color:var(--text2); flex:1 0 100%; margin-top:2px;">${esc((e.payload||{}).note || '')}${extra}</span>
       </div>`;
-    }).join('') || '<div class="empty">No events</div>';
+    }).join('') || '<div class="empty">No events registered</div>';
+    
     document.getElementById('detail-title').textContent = `${p.title || taskId}`;
     document.getElementById('detail-body').innerHTML = html;
     document.getElementById('detail').style.display = 'block';
-    // narrow screens: bring the detail panel into view
+    
     if (window.innerWidth <= 900) {
       document.getElementById('detail').scrollIntoView({behavior: 'smooth', block: 'start'});
     }
   } catch(e) { console.error(e); }
 }
 
-function costRow(a) {
-  const zero = !(a.total_cost > 0 || a.tokens_in > 0);
-  const cls = zero ? 'row-0' : '';
-  return `<div class="cost-grid ${cls}">
-    <div class="c">${esc(a.name || a.agent_id)}</div>
-    <div class="c">${roleChip(a.role)}</div>
-    <div class="c window hide-m">${a.work_start ? esc(a.work_start) + '–' + esc(a.work_end) : '—'}</div>
-    <div class="c num">${fmt(a.hours)}</div>
-    <div class="c num">$${fmt(a.rate)}</div>
-    <div class="c num">$${fmt(a.cost)}</div>
-    <div class="c num hide-m">${fmtk(a.tokens_in + a.tokens_out)}</div>
-    <div class="c num hide-m">$${fmt(a.token_cost)}</div>
-    <div class="c num"><b>$${fmt(a.total_cost)}</b></div>
-  </div>`;
-}
-
+// Core Data fetching
 async function refresh() {
   try {
     const q = PROJ ? '?project=' + encodeURIComponent(PROJ) : '';
     const r = await fetch('/api/board' + q, {headers: {Authorization: 'Bearer ' + TOKEN}});
     if (r.status === 401 || r.status === 403) {
       localStorage.removeItem('convoy-token');
-      location.reload();  // re-prompt for token
+      location.reload();
       return;
     }
-    const d = await r.json();
-    const b = d.board;
-    // project dropdown (W2)
+    BOARD_DATA = await r.json();
+    
+    // Project filter dropdown setup
     const sel = document.getElementById('proj-filter');
     const cur = sel.value;
-    const opts = ['', ...(d.projects||[])].map(p => `<option value="${esc(p)}"${p===cur?' selected':''}>${p ? esc(p) : 'All projects'}</option>`).join('');
+    const opts = ['', ...(BOARD_DATA.projects||[])].map(p => `<option value="${esc(p)}"${p===cur?' selected':''}>${p ? esc(p) : 'All projects'}</option>`).join('');
     if (sel.innerHTML !== opts) sel.innerHTML = opts;
-    document.getElementById('running').innerHTML = b.running.length ? b.running.map(t=>taskRow(t,'running')).join('') : '<div class="empty">Nothing running</div>';
-    document.getElementById('stuck').innerHTML = b.stuck.length ? b.stuck.map(t=>taskRow(t,'stuck')).join('') : '<div class="empty">No blockers 🎉</div>';
-    document.getElementById('done').innerHTML = b.done_today.length ? b.done_today.map(t=>taskRow(t,'done')).join('') : '<div class="empty">Nothing done today</div>';
-    document.getElementById('c-running').textContent = b.running.length;
-    document.getElementById('c-stuck').textContent = b.stuck.length;
-    document.getElementById('c-done').textContent = b.done_today.length;
-    document.getElementById('agents').innerHTML = (d.agents||[]).map(a => {
-      const hb = a.last_heartbeat ? timeAgo(a.last_heartbeat) : 'never';
-      return `<div class="agent" title="${esc(a.agent_id)} · last heartbeat ${esc(hb)}"><span class="dot ${a.last_heartbeat ? 'green' : 'red'}"></span>${esc(a.name || a.agent_id)}<span class="meta" style="color:var(--text2)">${hb === 'never' ? '' : ' · ' + esc(hb) + ' ago'}</span></div>`;
-    }).join('');
+
+    renderCurrentTab();
     refreshCosts();
   } catch(e) { console.error(e); }
 }
@@ -277,32 +879,351 @@ async function refreshCosts() {
   try {
     const r = await fetch('/api/costs/full', {headers: {Authorization: 'Bearer ' + TOKEN}});
     if (!r.ok) return;
-    const d = await r.json();
-    const rows = (d.per_agent||[]).map(costRow).join('');
-    document.getElementById('costs-body').innerHTML = rows ||
-      '<div style="color:var(--text2);font-size:12px;padding:14px 0">No agents yet — join one with the SDK.</div>';
-    // summary + grand totals
-    const u = d.usage || {};
-    document.getElementById('costs-summary').innerHTML =
-      `${fmtk(u.calls||0)} calls · ${fmtk(u.tokens_in||0)} in / ${fmtk(u.tokens_out||0)} out tokens`;
-    const t = d.total || {};
-    document.getElementById('costs-body').insertAdjacentHTML('beforeend',
-      `<div class="cost-grid">
-        <div class="c total">Grand total</div><div class="c total"></div><div class="c total hide-m"></div>
-        <div class="c total num">${fmt(t.hours)}h</div><div class="c total num"></div>
-        <div class="c total num">$${fmt(t.cost)}</div><div class="c total num hide-m"></div>
-        <div class="c total num hide-m">$${fmt(t.token_cost)}</div><div class="c total num grand">$${fmt(t.grand_total)}</div>
-      </div>`);
-    document.getElementById('costs').style.display = 'block';
-  } catch(e) { /* commander token may not cover costs; skip */ }
+    COSTS_DATA = await r.json();
+    
+    renderCurrentTab();
+  } catch(e) { console.error(e); }
 }
+
+// Tab router
+function renderCurrentTab() {
+  if (!BOARD_DATA) return;
+  
+  if (ACTIVE_TAB === 'pulse') {
+    renderPulseTab();
+  } else if (ACTIVE_TAB === 'projects') {
+    renderProjectsTab();
+  } else if (ACTIVE_TAB === 'agents') {
+    renderAgentsTab();
+  } else if (ACTIVE_TAB === 'analytics') {
+    renderAnalyticsTab();
+  }
+}
+
+// Rendering TAB 1: Pulse Board
+function renderPulseTab() {
+  const b = BOARD_DATA.board;
+  
+  const taskRow = (t, cls) => {
+    const age = t.last_event_at ? timeAgo(t.last_event_at) : '';
+    const doneBy = t.done_by ? ` · ✅ ${esc(t.done_by)}` : '';
+    return `<div class="task ${cls}" onclick="drill('${esc(t.task_id)}')">
+      <span class="dot" style="background:${t.status==='stuck'?'var(--red)':t.status==='review'?'var(--amber)':t.status==='doing'?'var(--blue)':'var(--green)'}"></span>
+      <div style="flex:1">
+        <div style="font-weight:500;">${esc(t.title || t.task_id)} ${age ? `<span class="meta" style="color:var(--text3)">· ${esc(age)} ago</span>` : ''}</div>
+        <div class="meta">${esc(t.assignee || 'unassigned')} · ${esc(t.task_id)}${t.project ? ' · <b style="color:var(--gold)">' + esc(t.project) + '</b>' : ''}${doneBy}</div>
+        ${(t.status !== 'done' && t.block_reason) ? `<div class="reason">⛔ ${esc(t.block_reason)}</div>` : ''}
+      </div>
+    </div>`;
+  };
+
+  document.getElementById('running').innerHTML = b.running.length ? b.running.map(t=>taskRow(t,'running')).join('') : '<div class="empty">Nothing running</div>';
+  document.getElementById('stuck').innerHTML = b.stuck.length ? b.stuck.map(t=>taskRow(t,'stuck')).join('') : '<div class="empty">No blockers 🎉</div>';
+  document.getElementById('done').innerHTML = b.done_today.length ? b.done_today.map(t=>taskRow(t,'done')).join('') : '<div class="empty">Nothing done today</div>';
+  
+  document.getElementById('c-running').textContent = b.running.length;
+  document.getElementById('c-stuck').textContent = b.stuck.length;
+  document.getElementById('c-done').textContent = b.done_today.length;
+
+  document.getElementById('agents').innerHTML = (BOARD_DATA.agents||[]).map(a => {
+    const hb = a.last_heartbeat ? timeAgo(a.last_heartbeat) : 'never';
+    const active = a.last_heartbeat ? (Math.floor((Date.now() - new Date(a.last_heartbeat.replace(' ', 'T') + 'Z').getTime()) / 1000) < 300) : false;
+    const idle = a.last_heartbeat ? (!active && Math.floor((Date.now() - new Date(a.last_heartbeat.replace(' ', 'T') + 'Z').getTime()) / 1000) < 3600) : false;
+    const stateCls = active ? 'green' : (idle ? 'amber' : 'red');
+    return `<div class="agent-chip" title="${esc(a.agent_id)} · last heartbeat ${esc(hb)}">
+      <span class="dot ${stateCls}"></span>
+      <b>${esc(a.name || a.agent_id)}</b>
+      <span class="meta" style="color:var(--text3)">${hb === 'never' ? 'offline' : esc(hb) + ' ago'}</span>
+    </div>`;
+  }).join('') || '<div class="empty">No agents in roster</div>';
+}
+
+// Rendering TAB 2: Projects
+function renderProjectsTab() {
+  const b = BOARD_DATA.board;
+  // Get all tasks (unfiltered)
+  const allTasks = [...b.running, ...b.stuck, ...b.done_today, ...b.todo, ...(b.stale || [])];
+  
+  // Group by project
+  const projects = {};
+  allTasks.forEach(t => {
+    const pName = t.project || 'General';
+    if (!projects[pName]) projects[pName] = [];
+    projects[pName].push(t);
+  });
+  
+  const html = Object.entries(projects).map(([name, tasks]) => {
+    const done = tasks.filter(t => t.status === 'done').length;
+    const total = tasks.length;
+    const pct = Math.round((done / total) * 100) || 0;
+    
+    const running = tasks.filter(t => t.status === 'doing').length;
+    const stuck = tasks.filter(t => t.status === 'stuck').length;
+    const review = tasks.filter(t => t.status === 'review').length;
+    const todo = tasks.filter(t => t.status === 'todo').length;
+    
+    const taskRows = tasks.map(t => `
+      <div class="project-task-row" onclick="drill('${esc(t.task_id)}')">
+        <span><span class="dot" style="display:inline-block; width:6px; height:6px; border-radius:50%; margin-right:6px; background:${t.status==='stuck'?'var(--red)':t.status==='doing'?'var(--blue)':t.status==='done'?'var(--green)':'var(--text3)'}"></span><b>${esc(t.task_id)}</b> — ${esc(t.title || t.task_id)}</span>
+        <span style="font-size:11px; color:var(--text2);">${esc(t.assignee || 'unassigned')}</span>
+      </div>
+    `).join('');
+    
+    return `<div class="project-card">
+      <div class="project-header">
+        <div class="project-title">${esc(name)}</div>
+        <div class="project-metrics">${done}/${total} Completed (${pct}%)</div>
+      </div>
+      <div class="progress-container">
+        <div class="progress-fill" style="width: ${pct}%"></div>
+      </div>
+      <div class="project-counts">
+        <span class="project-pill done">Done: ${done}</span>
+        <span class="project-pill running">Running: ${running}</span>
+        <span class="project-pill stuck">Stuck: ${stuck}</span>
+        <span class="project-pill review">Review: ${review}</span>
+        <span class="project-pill">Todo: ${todo}</span>
+      </div>
+      <div class="project-tasks">
+        ${taskRows}
+      </div>
+    </div>`;
+  }).join('') || '<div class="empty">No project tracking tasks</div>';
+  
+  document.getElementById('projects-list').innerHTML = html;
+}
+
+// Timezone schedule checking
+function getAgentScheduleStatus(a) {
+  if (!a.work_start || !a.work_end) return { active: false, label: 'No Schedule' };
+  try {
+    const tz = a.timezone || 'Australia/Sydney';
+    const d = new Date();
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz,
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
+    const parts = formatter.formatToParts(d);
+    const hour = parseInt(parts.find(p => p.type === 'hour').value, 10);
+    const minute = parseInt(parts.find(p => p.type === 'minute').value, 10);
+    const nowMinutes = hour * 60 + minute;
+
+    const [sh, sm] = a.work_start.split(':').map(Number);
+    const [eh, em] = a.work_end.split(':').map(Number);
+    const startMinutes = sh * 60 + sm;
+    const endMinutes = eh * 60 + em;
+
+    let active = false;
+    if (startMinutes <= endMinutes) {
+      active = nowMinutes >= startMinutes && nowMinutes <= endMinutes;
+    } else {
+      active = nowMinutes >= startMinutes || nowMinutes <= endMinutes;
+    }
+    return {
+      active,
+      label: active ? 'In Hours' : 'Off Hours',
+      timeStr: `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
+    };
+  } catch (e) {
+    return { active: false, label: 'Error' };
+  }
+}
+
+// Rendering TAB 3: Agents
+function renderAgentsTab() {
+  const registryAgents = BOARD_DATA.agents || [];
+  const costAgents = (COSTS_DATA && COSTS_DATA.per_agent) || [];
+  const b = BOARD_DATA.board;
+  const allTasks = [...b.running, ...b.stuck, ...b.done_today, ...b.todo, ...(b.stale || [])];
+
+  const combinedAgents = {};
+  registryAgents.forEach(a => {
+    combinedAgents[a.agent_id] = { ...a };
+  });
+  costAgents.forEach(a => {
+    if (combinedAgents[a.agent_id]) {
+      combinedAgents[a.agent_id] = { ...combinedAgents[a.agent_id], ...a };
+    } else {
+      combinedAgents[a.agent_id] = { ...a };
+    }
+  });
+
+  const getHeartbeatStatus = (lastHb) => {
+    if (!lastHb) return { status: 'offline', label: 'Offline', color: 'var(--red)' };
+    const t = new Date(lastHb.replace(' ', 'T') + 'Z');
+    const diffSeconds = Math.floor((Date.now() - t.getTime()) / 1000);
+    if (diffSeconds < 300) {
+      return { status: 'online', label: 'Online', color: 'var(--green)' };
+    } else if (diffSeconds < 3600) {
+      return { status: 'idle', label: 'Idle', color: 'var(--amber)' };
+    } else {
+      return { status: 'offline', label: 'Offline', color: 'var(--red)' };
+    }
+  };
+
+  const html = Object.values(combinedAgents).map(a => {
+    const hbState = getHeartbeatStatus(a.last_heartbeat);
+    const schedState = getAgentScheduleStatus(a);
+    const tzCls = schedState.active ? 'active' : 'off';
+    
+    // Find recent tasks
+    const activeTasks = allTasks.filter(t => t.assignee === a.agent_id && t.status !== 'done');
+    const doneTasks = allTasks.filter(t => t.done_by === a.agent_id && t.status === 'done');
+    
+    let taskStatusHTML = '<span style="color:var(--text3)">Idle</span>';
+    if (activeTasks.length) {
+      taskStatusHTML = activeTasks.map(t => `
+        <span style="color:var(--blue); cursor:pointer; font-weight:500;" onclick="drill('${esc(t.task_id)}')">
+          [${esc(t.task_id)}] ${esc(t.title || t.task_id)}
+        </span>
+      `).join(', ');
+    } else if (doneTasks.length) {
+      taskStatusHTML = `<span>Last done: <b style="color:var(--green); cursor:pointer;" onclick="drill('${esc(doneTasks[0].task_id)}')">${esc(doneTasks[0].title || doneTasks[0].task_id)}</b></span>`;
+    }
+
+    return `<div class="agent-card">
+      <div class="agent-card-header">
+        <div>
+          <div class="agent-card-name">${esc(a.name || a.agent_id)}</div>
+          <div style="margin-top:4px;">${roleChip(a.role)}</div>
+        </div>
+        <span class="status-indicator ${hbState.status}">${hbState.label}</span>
+      </div>
+      
+      <div class="agent-card-row" style="margin-top:10px;">
+        <span class="agent-card-label">Schedule Window:</span>
+        <span class="agent-card-val">${a.work_start ? `${a.work_start}–${a.work_end}` : '—'}</span>
+      </div>
+      <div class="agent-card-row">
+        <span class="agent-card-label">TZ Time &amp; State:</span>
+        <span>
+          <span style="font-variant-numeric:tabular-nums;">${schedState.timeStr || ''}</span>
+          <span class="agent-card-tz ${tzCls}">${schedState.label}</span>
+        </span>
+      </div>
+      <div class="agent-card-row">
+        <span class="agent-card-label">Activity Status:</span>
+        <span class="agent-card-val">${taskStatusHTML}</span>
+      </div>
+      
+      <div class="agent-stats-block">
+        <div class="agent-stat-item">
+          <span>Active Hours</span>
+          <b>${fmt(a.hours)} hrs</b>
+        </div>
+        <div class="agent-stat-item">
+          <span>Total Cost</span>
+          <b>$${fmt(a.total_cost)}</b>
+        </div>
+        <div class="agent-stat-item">
+          <span>Tokens Burned</span>
+          <b>${fmtk(a.tokens_in + a.tokens_out)}</b>
+        </div>
+        <div class="agent-stat-item">
+          <span>Token Cost</span>
+          <b>$${fmt(a.token_cost)}</b>
+        </div>
+      </div>
+    </div>`;
+  }).join('') || '<div class="empty">No registered agents loaded</div>';
+
+  document.getElementById('agents-cards').innerHTML = html;
+}
+
+function roleChip(role) {
+  const r = esc(role || 'unassigned');
+  return `<span class="chip ${r.toLowerCase()}">${r}</span>`;
+}
+
+// Rendering TAB 4: Analytics
+function renderAnalyticsTab() {
+  if (!COSTS_DATA) {
+    document.getElementById('pane-analytics').innerHTML = `<div class="panel"><div class="empty">Analytics data loading... Ensure you are authorized with a commander token.</div></div>`;
+    return;
+  }
+  
+  const d = COSTS_DATA;
+  const t = d.total || {};
+  const u = d.usage || {};
+  
+  // Update overall stat badges
+  document.getElementById('stat-grand-total').textContent = `$${fmt(t.grand_total)}`;
+  document.getElementById('stat-time-cost').textContent = `$${fmt(t.cost)}`;
+  document.getElementById('stat-token-cost').textContent = `$${fmt(t.token_cost)}`;
+  document.getElementById('stat-tokens').textContent = fmtk(u.tokens_in + u.tokens_out);
+  document.getElementById('stat-calls').textContent = fmtk(u.calls);
+
+  // Allocation table body
+  const costRow = (a) => {
+    const zero = !(a.total_cost > 0 || a.tokens_in > 0);
+    const cls = zero ? 'row-0' : '';
+    return `<div class="cost-grid ${cls}">
+      <div class="c">${esc(a.name || a.agent_id)}</div>
+      <div class="c">${roleChip(a.role)}</div>
+      <div class="c window hide-m">${a.work_start ? esc(a.work_start) + '–' + esc(a.work_end) : '—'}</div>
+      <div class="c num">${fmt(a.hours)}</div>
+      <div class="c num">$${fmt(a.rate)}</div>
+      <div class="c num">$${fmt(a.cost)}</div>
+      <div class="c num hide-m">${fmtk(a.tokens_in + a.tokens_out)}</div>
+      <div class="c num hide-m">$${fmt(a.token_cost)}</div>
+      <div class="c num"><b>$${fmt(a.total_cost)}</b></div>
+    </div>`;
+  };
+
+  let rows = (d.per_agent||[]).map(costRow).join('');
+  
+  // Append totals row
+  rows += `<div class="cost-grid">
+    <div class="c total">Grand total</div><div class="c total"></div><div class="c total hide-m"></div>
+    <div class="c total num">${fmt(t.hours)}h</div><div class="c total num"></div>
+    <div class="c total num">$${fmt(t.cost)}</div><div class="c total num hide-m"></div>
+    <div class="c total num hide-m">$${fmt(t.token_cost)}</div><div class="c total num grand">$${fmt(t.grand_total)}</div>
+  </div>`;
+  
+  document.getElementById('costs-body').innerHTML = rows;
+
+  // Build model analytics
+  const modelBreakdown = {};
+  (d.per_agent || []).forEach(a => {
+    (a.by_model || []).forEach(m => {
+       if (!modelBreakdown[m.model]) {
+          modelBreakdown[m.model] = { model: m.model, tokens_in: 0, tokens_out: 0, calls: 0, token_cost: 0.0 };
+       }
+       modelBreakdown[m.model].tokens_in += m.tokens_in;
+       modelBreakdown[m.model].tokens_out += m.tokens_out;
+       modelBreakdown[m.model].calls += m.calls;
+       modelBreakdown[m.model].token_cost += m.token_cost;
+    });
+  });
+
+  const modelsHtml = Object.values(modelBreakdown).map(m => {
+    const totalTokens = m.tokens_in + m.tokens_out;
+    const inPct = Math.round((m.tokens_in / totalTokens) * 100) || 50;
+    return `<div class="model-card">
+      <div class="model-name">
+        <span>🤖 ${esc(m.model)}</span>
+        <b style="color:var(--gold);">$${fmt(m.token_cost)}</b>
+      </div>
+      <div class="progress-container" style="height:4px;" title="Token Split: ${inPct}% Prompt Input / ${100-inPct}% Completion Output">
+        <div class="progress-fill" style="width: ${inPct}%; background: linear-gradient(90deg, var(--blue), var(--amber));"></div>
+      </div>
+      <div class="model-detail">
+        <span>Calls: <b>${fmtk(m.calls)}</b></span>
+        <span>Tokens: <b>${fmtk(totalTokens)}</b></span>
+      </div>
+    </div>`;
+  }).join('') || '<div class="empty">No token usage logs mapped yet</div>';
+
+  document.getElementById('models-body').innerHTML = modelsHtml;
+}
+
+// Initialise
 refresh();
 setInterval(refresh, 2000);
 document.getElementById('ts').textContent = new Date().toLocaleTimeString();
-document.getElementById('proj-filter').addEventListener('change', e => {
-  PROJ = e.target.value;
-  refresh();
-});
+
 document.getElementById('detail-close').addEventListener('click', () => {
   document.getElementById('detail').style.display = 'none';
 });
