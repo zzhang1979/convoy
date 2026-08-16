@@ -161,9 +161,9 @@ multi-bot token conflict, and close the agent-permission gap Henry flagged.
 
 | # | Story | Owner | Status | Notes |
 |---|-------|-------|--------|-------|
-| S9.1 | **Henry containers health** — diagnose henry2-fresh/henry3 unhealthy, TG poller conflict (shared bot token) | Jasmine | 🔵 planned | each container needs its OWN bot token or webhook mode |
+| S9.1 | **Henry containers health** — diagnose henry2-fresh/henry3 unhealthy, TG poller conflict (shared bot token) | Jasmine | ✅ done | JEAN fixed Aug 16: all 3 containers rebuilt healthy (healthcheck port was hardcoded 18789; henry2/3 listen 18790/18791); password auth restored. Verified: all 3 `Up (healthy)` |
 | S9.2 | **Agent read-only view** — agents can GET /api/board + /api/tasks/{id} with their own token (Henry hit 403) | Jean | 🔵 planned | read-scoped auth, no write escalation |
-| S9.3 | **Henry SDK rebuild** — re-save convoy_sdk.py + token into henry1 container (lost on containerization) | Jasmine/Henry | 🔵 planned | verify heartbeat + event send from container |
+| S9.3 | **Henry SDK rebuild** — re-save convoy_sdk.py + token into henry1 container (lost on containerization) | Jasmine/Henry | ✅ done | SDK + token re-saved into henry1 (`/home/node/.openclaw/workspace/` + host durable copy `/root/.openclaw/workspace/convoy/`); `requests` installed in container; heartbeat + created/progress events + usage verified FROM INSIDE container (Aug 16); task S9.3 live on board |
 | S9.4 | **New agent onboarding doc** — antigravity/QA agent join via OpenAI Agents SDK (R-1 pilot) | Jean | 🔵 planned | handoff-in, event-out to Convoy |
 
 ## Sprint 10 — QA Pilot + Observability + Hardening 🚀 PLAN
