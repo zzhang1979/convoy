@@ -166,17 +166,17 @@ multi-bot token conflict, and close the agent-permission gap Henry flagged.
 | S9.3 | **Henry SDK rebuild** — re-save convoy_sdk.py + token into henry1 container (lost on containerization) | Jasmine/Henry | ✅ done | SDK + token re-saved into henry1 (`/home/node/.openclaw/workspace/` + host durable copy `/root/.openclaw/workspace/convoy/`); `requests` installed in container; heartbeat + created/progress events + usage verified FROM INSIDE container (Aug 16); task S9.3 live on board |
 | S9.4 | **New agent onboarding doc** — antigravity/QA agent join via OpenAI Agents SDK (R-1 pilot) | Jean/Antigravity | ✅ done | Pilot agent implemented at agent/qa_agent_pilot.py and doc at docs/antigravity-qa-onboarding.md |
 
-## Sprint 10 — QA Pilot + Observability + Hardening 🔄 IN PROGRESS
+## Sprint 10 — QA Pilot + Observability + Hardening ✅ COMPLETE
 
 **Goal**: Stand up the R-1 recommended QA agent (OpenAI Agents SDK) and
 harden Convoy for the antigravity handoff.
 
 | # | Story | Owner | Status | Notes |
 |---|-------|-------|--------|-------|
-| S10.1 | **QA agent pilot** — OpenAI Agents SDK agent, joins Convoy, runs a real review task | Jean | 🔵 planned | measure tokens vs baseline (R-1) |
-| S10.2 | **Token/usage dashboard** — per-agent token burn chart in UI (we track costs) | Jasmine | 🔵 planned | from /api/costs/full |
-| S10.3 | **Stale-task detection** — heartbeat-based stale flag (running tasks with old hb) | Jean | 🔵 planned | mark-done question from Anthony |
-| S10.4 | **Antigravity onboarding pack** — README for new collaborators: repo map, event model, SDK, test recipe, deploy recipe | Jean | 🔵 planned | for stonechueng@gmail.com |
+| S10.1 | **QA agent pilot** — OpenAI Agents SDK agent, joins Convoy, runs a real review task | Jean/Antigravity | ✅ done | agent/qa_agent_pilot.py (df268de); test_sprint10.py |
+| S10.2 | **Token/usage dashboard** — per-agent token burn chart in UI (we track costs) | Jasmine/Antigravity | ✅ done | UI usage panel (2fe2415) |
+| S10.3 | **Stale-task detection** — heartbeat-based stale flag (running tasks with old hb) | Jean/Antigravity | ✅ done | agent-level heartbeat in derive.py (2fe2415); UI stale band |
+| S10.4 | **Antigravity onboarding pack** — README for new collaborators: repo map, event model, SDK, test recipe, deploy recipe | Jean/Antigravity | ✅ done | docs/antigravity-onboarding-pack.md (155 lines) |
 
 ## Definition of Ready (story is ready when)
 
