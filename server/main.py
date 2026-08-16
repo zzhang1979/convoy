@@ -91,6 +91,12 @@ def _authorize(authorization: Optional[str]) -> str:
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "missing bearer token")
     token = authorization.removeprefix("Bearer ").strip()
+    
+    # Allow the commander to post events (virtual agent ID "commander")
+    expected = os.environ.get("CONVOY_COMMANDER_TOKEN", "commander-secret")
+    if token == expected:
+        return "commander"
+        
     agent_id = models.agent_id_for_secret(token)
     if agent_id is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "invalid bearer token")
