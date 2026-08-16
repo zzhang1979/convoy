@@ -154,6 +154,30 @@ project grouping, role attribution, user-story artifacts.
 | S7.4 | **W4: Role attribution** — snapshot role on events, show in board+detail | Jean | ✅ done | historical accuracy |
 | S7.5 | **Tests + deploy + docs** | Jean | ✅ done | 29 passed |
 
+## Sprint 9 — OpenClaw Containers + Token Hygiene + Agent Permissions 🚀 PLAN
+
+**Goal**: Bring the Dockerized Henry instances back into the loop, fix the
+multi-bot token conflict, and close the agent-permission gap Henry flagged.
+
+| # | Story | Owner | Status | Notes |
+|---|-------|-------|--------|-------|
+| S9.1 | **Henry containers health** — diagnose henry2-fresh/henry3 unhealthy, TG poller conflict (shared bot token) | Jasmine | 🔵 planned | each container needs its OWN bot token or webhook mode |
+| S9.2 | **Agent read-only view** — agents can GET /api/board + /api/tasks/{id} with their own token (Henry hit 403) | Jean | 🔵 planned | read-scoped auth, no write escalation |
+| S9.3 | **Henry SDK rebuild** — re-save convoy_sdk.py + token into henry1 container (lost on containerization) | Jasmine/Henry | 🔵 planned | verify heartbeat + event send from container |
+| S9.4 | **New agent onboarding doc** — antigravity/QA agent join via OpenAI Agents SDK (R-1 pilot) | Jean | 🔵 planned | handoff-in, event-out to Convoy |
+
+## Sprint 10 — QA Pilot + Observability + Hardening 🚀 PLAN
+
+**Goal**: Stand up the R-1 recommended QA agent (OpenAI Agents SDK) and
+harden Convoy for the antigravity handoff.
+
+| # | Story | Owner | Status | Notes |
+|---|-------|-------|--------|-------|
+| S10.1 | **QA agent pilot** — OpenAI Agents SDK agent, joins Convoy, runs a real review task | Jean | 🔵 planned | measure tokens vs baseline (R-1) |
+| S10.2 | **Token/usage dashboard** — per-agent token burn chart in UI (we track costs) | Jasmine | 🔵 planned | from /api/costs/full |
+| S10.3 | **Stale-task detection** — heartbeat-based stale flag (running tasks with old hb) | Jean | 🔵 planned | mark-done question from Anthony |
+| S10.4 | **Antigravity onboarding pack** — README for new collaborators: repo map, event model, SDK, test recipe, deploy recipe | Jean | 🔵 planned | for stonechueng@gmail.com |
+
 ## Definition of Ready (story is ready when)
 
 - Acceptance criteria written · owner assigned · dependencies known.
