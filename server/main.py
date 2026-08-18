@@ -61,7 +61,7 @@ async def lifespan(_: FastAPI):
     yield
 
 
-app = FastAPI(title="Convoy", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="Convoy", version="0.2.0", lifespan=lifespan)
 
 # Serve the commander pulse UI at /ui/ and /
 UI_DIR = Path(__file__).resolve().parent.parent / "ui"
